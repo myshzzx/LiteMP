@@ -16,9 +16,10 @@ namespace LiteClient
         public Ped Character;
         public Vector3 Position, _rotation, AimCoords;
         public int ModelHash, CurrentWeapon;
-        public bool IsShooting, IsAiming, IsJumping, IsInVehicle;
+        public bool IsShooting, _lastShooting, IsAiming, IsJumping, _lastJumping, IsInVehicle, _lastVehicle;
+        private bool _lastBurnout;
         public float Latency;
-        public bool IsHornPressed, LightsOn, highbeamsOn;
+        public bool IsHornPressed, _lastHorn, LightsOn, highbeamsOn;
         public Vehicle MainVehicle { get; set; }
 
         public int VehicleSeat, PedHealth;
@@ -130,11 +131,8 @@ namespace LiteClient
             set { _rotation = value; }
         }
 
-        private bool _lastVehicle;
         private uint _switch;
         private float _lastSpeed;
-        private bool _lastShooting;
-        private bool _lastJumping;
         private bool _blip;
         private bool _justEnteredVeh;
         private int _relGroup;
@@ -147,7 +145,6 @@ namespace LiteClient
 
         private bool _isStreamedIn;
         private Blip _mainBlip;
-        private bool _lastHorn;
         private Prop _parachuteProp;
 
         public SyncPed(int hash, Vector3 pos, Vector3 rot, bool blip = true)
@@ -182,8 +179,8 @@ namespace LiteClient
             try
             {
                 float hRange = IsInVehicle ? 200f : 200f;
-                var gPos = IsInVehicle ? VehiclePosition : Position;
-                var inRange = Game.Player.Character.IsInRangeOf(gPos, hRange);
+                Vector3 gPos = IsInVehicle ? VehiclePosition : Position;
+                bool inRange = Game.Player.Character.IsInRangeOf(gPos, hRange);
 
                 if (inRange && !_isStreamedIn)
                 {
@@ -207,7 +204,7 @@ namespace LiteClient
                         _mainBlip = World.CreateBlip(gPos);
                         _mainBlip.Color = BlipColor.White;
                         _mainBlip.Scale = 0.8f;
-                        SetBlipNameFromTextFile(_mainBlip, Name == null ? "<nameless>" : Name);
+                        SetBlipNameFromTextFile(_mainBlip, Name ?? "<nameless>");
                     }
                     if (_blip && _mainBlip != null)
                         _mainBlip.Position = gPos;
@@ -239,19 +236,15 @@ namespace LiteClient
 
                 if (!Character.IsOccluded && Character.IsInRangeOf(Game.Player.Character.Position, 20f))
                 {
-                    var targetPos = Character.GetBoneCoord(Bone.IK_Head) + new Vector3(0, 0, 0.5f);
+                    Vector3 targetPos = Character.GetBoneCoord(Bone.IK_Head) + new Vector3(0, 0, 0.5f);
 
                     targetPos += Character.Velocity / Game.FPS;
 
                     Function.Call(Hash.SET_DRAW_ORIGIN, targetPos.X, targetPos.Y, targetPos.Z, 0);
 
-                    var nameText = Name ?? "<nameless>";
+                    string nameText = (TicksSinceLastUpdate > 10000) ? ("~r~AFK~w~~n~" + Name ?? "<nameless>") : (Name ?? "<nameless>");
 
-                    if (TicksSinceLastUpdate > 10000)
-                        nameText = "~r~AFK~w~~n~" + nameText;
-
-                    var dist = (GameplayCamera.Position - Character.Position).Length();
-                    var sizeOffset = Math.Max(1f - (dist / 30f), 0.3f);
+                    float sizeOffset = Math.Max(1f - ((GameplayCamera.Position - Character.Position).Length() / 30f), 0.3f);
 
                     new UIResText(nameText, new Point(0, 0), 0.4f * sizeOffset, Color.WhiteSmoke, Font.ChaletLondon, UIResText.Alignment.Centered)
                     {
@@ -266,10 +259,9 @@ namespace LiteClient
                     if (MainVehicle != null && Util.IsVehicleEmpty(MainVehicle))
                         MainVehicle.Delete();
 
-                    var vehs = World.GetAllVehicles().OrderBy(v =>
+                    List<Vehicle> vehs = World.GetAllVehicles().OrderBy(v =>
                     {
-                        if (v == null) return float.MaxValue;
-                        return (v.Position - Character.Position).Length();
+                        return v == null ? float.MaxValue : (v.Position - Character.Position).Length();
                     }).ToList();
 
 
@@ -277,23 +269,22 @@ namespace LiteClient
                     {
                         if (Debug)
                         {
-                            if (MainVehicle != null) MainVehicle.Delete();
+                            if (MainVehicle != null)
+                                MainVehicle.Delete();
+
                             MainVehicle = World.CreateVehicle(new Model(VehicleHash), VehiclePosition, VehicleRotation.Z);
                         }
                         else
                             MainVehicle = vehs[0];
 
-                        if (Game.Player.Character.IsInVehicle(MainVehicle) &&
-                            VehicleSeat == Util.GetPedSeat(Game.Player.Character))
+                        if (Game.Player.Character.IsInVehicle(MainVehicle) && VehicleSeat == Util.GetPedSeat(Game.Player.Character))
                         {
                             Game.Player.Character.Task.WarpOutOfVehicle(MainVehicle);
                             UI.Notify("~r~Car jacked!");
                         }
                     }
                     else
-                    {
                         MainVehicle = World.CreateVehicle(new Model(VehicleHash), gPos, 0);
-                    }
 
                     if (MainVehicle != null)
                     {
@@ -313,20 +304,15 @@ namespace LiteClient
                 }
 
                 if (_lastVehicle && _justEnteredVeh && IsInVehicle && !Character.IsInVehicle(MainVehicle) && DateTime.Now.Subtract(_enterVehicleStarted).TotalSeconds <= 4)
-                {
                     return;
-                }
+
                 _justEnteredVeh = false;
 
-                if (_lastVehicle && !IsInVehicle && MainVehicle != null)
-                {
-                    if (Character != null) Character.Task.LeaveVehicle(MainVehicle, true);
-                }
+                if (_lastVehicle && !IsInVehicle && MainVehicle != null && Character != null)
+                    Character.Task.LeaveVehicle(MainVehicle, true);
 
                 if (Character != null)
-                {
                     Character.Health = (int)((PedHealth / (float)100) * Character.MaxHealth);
-                }
 
                 _switch++;
 
@@ -351,10 +337,7 @@ namespace LiteClient
                 {
                     if (GetResponsiblePed(MainVehicle).Handle == Character.Handle)
                     {
-                        if (MainVehicle.EngineRunning != IsEngineRunning)
-                        {
-                            MainVehicle.EngineRunning = IsEngineRunning;
-                        }
+                        MainVehicle.EngineRunning = IsEngineRunning;
 
                         MainVehicle.EngineHealth = VehicleHealth;
                         if (MainVehicle.Health <= 0)
@@ -373,21 +356,16 @@ namespace LiteClient
                         MainVehicle.SecondaryColor = (VehicleColor)VehicleSecondaryColor;
 
                         if (Plate != null)
-                        {
                             MainVehicle.NumberPlate = Plate;
-                        }
 
-                        var radioStations = Util.GetRadioStations();
+                        string[] radioStations = Util.GetRadioStations();
 
                         if (radioStations?.ElementAtOrDefault(RadioStation) != null)
-                        {
                             Function.Call(Hash.SET_VEH_RADIO_STATION, radioStations[RadioStation]);
-                        }
 
-                        if (VehicleMods != null && _modSwitch % 50 == 0 &&
-                            Game.Player.Character.IsInRangeOf(VehiclePosition, 30f))
+                        if (VehicleMods != null && _modSwitch % 50 == 0 && Game.Player.Character.IsInRangeOf(VehiclePosition, 30f))
                         {
-                            var id = _modSwitch / 50;
+                            int id = _modSwitch / 50;
 
                             if (VehicleMods.ContainsKey(id) && VehicleMods[id] != MainVehicle.GetMod((VehicleMod)id))
                             {
@@ -411,18 +389,20 @@ namespace LiteClient
                             _lastHorn = false;
                             MainVehicle.SoundHorn(1);
                         }
+                            
 
-                        if (IsInBurnout)
+                        if (IsInBurnout && !_lastBurnout)
                         {
                             Function.Call(Hash.SET_VEHICLE_BURNOUT, MainVehicle, true);
                             Function.Call(Hash.TASK_VEHICLE_TEMP_ACTION, Character, MainVehicle, 23, 120000); // 30 - burnout
                         }
-                        else
+                        else if (!IsInBurnout && _lastBurnout)
                         {
                             Function.Call(Hash.SET_VEHICLE_BURNOUT, MainVehicle, false);
                             Character.Task.ClearAll();
                         }
 
+                        _lastBurnout = IsInBurnout;
 
                         Function.Call(Hash.SET_VEHICLE_BRAKE_LIGHTS, MainVehicle, Speed > 0.2 && _lastSpeed > Speed);
 
@@ -442,27 +422,19 @@ namespace LiteClient
                             float cAlpha = alpha - currentInterop.LastAlpha;
                             currentInterop.LastAlpha = alpha;
 
-                            Vector3 comp = Util.Lerp(new Vector3(), cAlpha, currentInterop.vecError);
-
                             if (alpha == 1.5f)
-                            {
                                 currentInterop.FinishTime = 0;
-                            }
 
-                            Vector3 newPos = VehiclePosition + comp;
-
-                            MainVehicle.Velocity = VehicleVelocity + (newPos - MainVehicle.Position);
+                            MainVehicle.Velocity = VehicleVelocity + (VehiclePosition + Util.Lerp(new Vector3(), cAlpha, currentInterop.vecError) - MainVehicle.Position);
 
                             _stopTime = DateTime.Now;
                             _carPosOnUpdate = MainVehicle.Position;
                         }
                         else if (DateTime.Now.Subtract(_stopTime).TotalMilliseconds <= 1000)
                         {
-                            var dir = VehiclePosition - _lastVehiclePos;
-                            var posTarget = Util.LinearVectorLerp(_carPosOnUpdate, VehiclePosition + dir,
-                                (int)DateTime.Now.Subtract(_stopTime).TotalMilliseconds, 1000);
-                            Function.Call(Hash.SET_ENTITY_COORDS_NO_OFFSET, MainVehicle, posTarget.X, posTarget.Y,
-                                posTarget.Z, 0, 0, 0, 0);
+                            Vector3 posTarget = Util.LinearVectorLerp(_carPosOnUpdate, VehiclePosition + (VehiclePosition - _lastVehiclePos), (int)DateTime.Now.Subtract(_stopTime).TotalMilliseconds, 1000);
+
+                            Function.Call(Hash.SET_ENTITY_COORDS_NO_OFFSET, MainVehicle, posTarget.X, posTarget.Y, posTarget.Z, 0, 0, 0, 0);
                         }
                         else
                         {
@@ -485,13 +457,10 @@ namespace LiteClient
                 {
                     if (PedProps != null && _clothSwitch % 50 == 0 && Game.Player.Character.IsInRangeOf(Position, 30f))
                     {
-                        var id = _clothSwitch / 50;
+                        int id = _clothSwitch / 50;
 
-                        if (PedProps.ContainsKey(id) &&
-                            PedProps[id] != Function.Call<int>(Hash.GET_PED_DRAWABLE_VARIATION, Character.Handle, id))
-                        {
+                        if (PedProps.ContainsKey(id) && PedProps[id] != Function.Call<int>(Hash.GET_PED_DRAWABLE_VARIATION, Character.Handle, id))
                             Function.Call(Hash.SET_PED_COMPONENT_VARIATION, Character.Handle, id, PedProps[id], 0, 0);
-                        }
                     }
 
                     _clothSwitch++;
@@ -499,15 +468,10 @@ namespace LiteClient
                         _clothSwitch = 0;
 
                     if (Character.Weapons.Current.Hash != (WeaponHash)CurrentWeapon)
-                    {
-                        var wep = Character.Weapons.Give((WeaponHash)CurrentWeapon, 9999, true, true);
-                        Character.Weapons.Select(wep);
-                    }
+                        Character.Weapons.Select(Character.Weapons.Give((WeaponHash)CurrentWeapon, 9999, true, true));
 
                     if (!_lastJumping && IsJumping)
-                    {
                         Character.Task.Jump();
-                    }
 
                     if (IsParachuteOpen)
                     {
@@ -529,7 +493,7 @@ namespace LiteClient
                     }
                     else
                     {
-                        var dest = Position;
+                        Vector3 dest = Position;
                         Character.FreezePosition = false;
 
                         if (_parachuteProp != null)
@@ -554,16 +518,13 @@ namespace LiteClient
                             Character.Task.AimAt(AimCoords, 100);
                         }
 
-                        if (!Character.IsInRangeOf(Position, 0.5f) &&
-                            ((IsShooting && !_lastShooting) ||
-                             (IsShooting && _lastShooting && _switch % (threshold * 2) == 0)))
+                        if (!Character.IsInRangeOf(Position, 0.5f) && ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold * 2) == 0)))
                         {
                             Function.Call(Hash.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD, Character.Handle, dest.X, dest.Y,
                                 dest.Z, AimCoords.X, AimCoords.Y, AimCoords.Z, 2f, 1, 0x3F000000, 0x40800000, 1, 0, 0,
                                 (uint)FiringPattern.FullAuto);
                         }
-                        else if ((IsShooting && !_lastShooting) ||
-                                 (IsShooting && _lastShooting && _switch % (threshold / 2) == 0))
+                        else if ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold / 2) == 0))
                         {
                             Function.Call(Hash.TASK_SHOOT_AT_COORD, Character.Handle, AimCoords.X, AimCoords.Y,
                                 AimCoords.Z, 1500, (uint)FiringPattern.FullAuto);
@@ -607,26 +568,26 @@ namespace LiteClient
 
         public void StartInterpolation()
         {
-            currentInterop = new Interpolation();
-
-            currentInterop.vecTarget = VehiclePosition;
-            currentInterop.vecError = VehiclePosition - _lastVehiclePos;
-            currentInterop.vecError *= Util.Lerp(0.25f, Util.Unlerp(100, 100, 400), 1f);
-            currentInterop.StartTime = Environment.TickCount;
-            currentInterop.FinishTime = Environment.TickCount + 100;
-            currentInterop.LastAlpha = 0f;
+            currentInterop = new Interpolation
+            {
+                vecTarget = VehiclePosition,
+                vecError = (VehiclePosition - _lastVehiclePos) * Util.Lerp(0.25f, Util.Unlerp(100, 100, 400), 1f),
+                StartTime = Environment.TickCount,
+                FinishTime = Environment.TickCount + 100,
+                LastAlpha = 0f
+            };
         }
 
         public static Ped GetResponsiblePed(Vehicle veh)
         {
-            if (veh == null || veh.Handle == 0 || !veh.Exists()) return new Ped(0);
-
-            if (veh.GetPedOnSeat(GTA.VehicleSeat.Driver).Handle != 0) return veh.GetPedOnSeat(GTA.VehicleSeat.Driver);
+            if (veh == null || veh.Handle == 0 || !veh.Exists())
+                return new Ped(0);
+            else if (veh.GetPedOnSeat(GTA.VehicleSeat.Driver).Handle != 0)
+                return veh.GetPedOnSeat(GTA.VehicleSeat.Driver);
 
             for (int i = 0; i < veh.PassengerSeats; i++)
-            {
-                if (veh.GetPedOnSeat((VehicleSeat)i).Handle != 0) return veh.GetPedOnSeat((VehicleSeat)i);
-            }
+                if (veh.GetPedOnSeat((VehicleSeat)i).Handle != 0)
+                    return veh.GetPedOnSeat((VehicleSeat)i);
 
             return new Ped(0);
         }

@@ -5,6 +5,7 @@ namespace LiteClient
 {
     public class PlayerSettings
     {
+        public string MasterServer { get; set; }
         public string DisplayName { get; set; }
         public Keys ActivationKey { get; set; }
         public int MaxStreamedNpcs { get; set; }
@@ -13,6 +14,7 @@ namespace LiteClient
 
         public PlayerSettings()
         {
+            MasterServer = "http://litemp.000webhostapp.com/";
             DisplayName = string.IsNullOrWhiteSpace(GTA.Game.Player.Name) ? "Player" : GTA.Game.Player.Name;
             ActivationKey = Keys.F9;
             MaxStreamedNpcs = 10;

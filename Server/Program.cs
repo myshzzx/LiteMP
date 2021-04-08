@@ -37,7 +37,7 @@ namespace LiteServer
             ServerInstance.PasswordProtected = settings.PasswordProtected;
             ServerInstance.Password = settings.Password;
             ServerInstance.AnnounceSelf = settings.Announce;
-            ServerInstance.MasterServer = "http://masterserver.lite-mp.com/";
+            ServerInstance.MasterServer = settings.MasterServer;
             ServerInstance.MaxPlayers = settings.MaxPlayers;
             ServerInstance.AllowDisplayNames = settings.AllowDisplayNames;
 

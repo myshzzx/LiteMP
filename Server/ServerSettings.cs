@@ -2,6 +2,7 @@
 {
     public class ServerSettings
     {
+        public string MasterServer { get; set; }
         public string Name { get; set; }
         public int MaxPlayers { get; set; }
         public int Port { get; set; }
@@ -16,6 +17,7 @@
 
         public ServerSettings()
         {
+            MasterServer = "http://litemp.000webhostapp.com/";
             Port = 4499;
             MaxPlayers = 16;
             Name = "Simple GTA Server";

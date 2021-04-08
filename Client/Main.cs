@@ -21,8 +21,6 @@ namespace LiteClient
 {
     public class Main : Script
     {
-        public string MasterAddress = "http://masterserver.lite-mp.com/";
-
         public static PlayerSettings PlayerSettings;
 
         public static readonly ScriptVersion LocalScriptVersion = ScriptVersion.VERSION_0_1_2_1;
@@ -78,16 +76,17 @@ namespace LiteClient
             _chat = new Chat();
             _chat.OnComplete += (sender, args) =>
             {
-                var message = _chat.CurrentInput;
+                string message = _chat.CurrentInput;
                 if (!string.IsNullOrEmpty(message))
                 {
-                    var obj = new ChatData()
+                    ChatData obj = new ChatData()
                     {
                         Message = message,
                     };
-                    var data = SerializeBinary(obj);
 
-                    var msg = _client.CreateMessage();
+                    byte[] data = SerializeBinary(obj);
+
+                    NetOutgoingMessage msg = _client.CreateMessage();
                     msg.Write((int)PacketType.ChatData);
                     msg.Write(data.Length);
                     msg.Write(data);
@@ -123,8 +122,6 @@ namespace LiteClient
 
         // Debug stuff
         private bool display;
-        private Ped mainPed;
-        private Vehicle mainVehicle;
 
         private bool _isGoingToCar;
         //
@@ -152,9 +149,8 @@ namespace LiteClient
         private void AddToFavorites(string server)
         {
             if (string.IsNullOrWhiteSpace(server)) return;
-            var split = server.Split(':');
-            int port;
-            if (split.Length < 2 || string.IsNullOrWhiteSpace(split[0]) || string.IsNullOrWhiteSpace(split[1]) || !int.TryParse(split[1], out port)) return;
+            string[] split = server.Split(':');
+            if (split.Length < 2 || string.IsNullOrWhiteSpace(split[0]) || string.IsNullOrWhiteSpace(split[1])) return;
             PlayerSettings.FavoriteServers.Add(server);
             Util.SaveSettings(Program.Location + Path.DirectorySeparatorChar + "Settings.xml");
         }
@@ -173,9 +169,8 @@ namespace LiteClient
         private void AddServerToRecent(UIMenuItem server)
         {
             if (string.IsNullOrWhiteSpace(server.Description)) return;
-            var split = server.Description.Split(':');
-            int tmpPort;
-            if (split.Length < 2 || string.IsNullOrWhiteSpace(split[0]) || string.IsNullOrWhiteSpace(split[1]) || !int.TryParse(split[1], out tmpPort)) return;
+            string[] split = server.Description.Split(':');
+            if (split.Length < 2 || string.IsNullOrWhiteSpace(split[0]) || string.IsNullOrWhiteSpace(split[1]) || !int.TryParse(split[1], out int tmpPort)) return;
             if (!PlayerSettings.RecentServers.Contains(server.Description))
             {
                 PlayerSettings.RecentServers.Add(server.Description);
@@ -183,8 +178,10 @@ namespace LiteClient
                     PlayerSettings.RecentServers.RemoveAt(0);
                 Util.SaveSettings(Program.Location + Path.DirectorySeparatorChar + "Settings.xml");
 
-                var item = new UIMenuItem(server.Text);
-                item.Description = server.Description;
+                UIMenuItem item = new UIMenuItem(server.Text)
+                {
+                    Description = server.Description
+                };
                 item.SetRightLabel(server.RightLabel);
                 item.SetLeftBadge(server.LeftBadge);
                 item.Activated += (sender, selectedItem) =>
@@ -213,10 +210,9 @@ namespace LiteClient
                         _password = Game.GetUserInput(256);
                     }
 
-                    var splt = server.Description.Split(':');
+                    string[] splt = server.Description.Split(':');
                     if (splt.Length < 2) return;
-                    int port;
-                    if (!int.TryParse(splt[1], out port)) return;
+                    if (!int.TryParse(splt[1], out int port)) return;
                     ConnectToServer(splt[0], port);
                     MainMenu.TemporarilyHidden = true;
                     _connectTab.RefreshIndex();
@@ -228,9 +224,8 @@ namespace LiteClient
         private void AddServerToRecent(string server, string password)
         {
             if (string.IsNullOrWhiteSpace(server)) return;
-            var split = server.Split(':');
-            int tmpPort;
-            if (split.Length < 2 || string.IsNullOrWhiteSpace(split[0]) || string.IsNullOrWhiteSpace(split[1]) || !int.TryParse(split[1], out tmpPort)) return;
+            string[] split = server.Split(':');
+            if (split.Length < 2 || string.IsNullOrWhiteSpace(split[0]) || string.IsNullOrWhiteSpace(split[1]) || !int.TryParse(split[1], out int tmpPort)) return;
             if (!PlayerSettings.RecentServers.Contains(server))
             {
                 PlayerSettings.RecentServers.Add(server);
@@ -238,8 +233,10 @@ namespace LiteClient
                     PlayerSettings.RecentServers.RemoveAt(0);
                 Util.SaveSettings(Program.Location + Path.DirectorySeparatorChar + "Settings.xml");
 
-                var item = new UIMenuItem(server);
-                item.Description = server;
+                UIMenuItem item = new UIMenuItem(server)
+                {
+                    Description = server
+                };
                 item.SetRightLabel(server);
                 item.Activated += (sender, selectedItem) =>
                 {
@@ -267,10 +264,9 @@ namespace LiteClient
                         _password = Game.GetUserInput(256);
                     }
 
-                    var splt = server.Split(':');
+                    string[] splt = server.Split(':');
                     if (splt.Length < 2) return;
-                    int port;
-                    if (!int.TryParse(splt[1], out port)) return;
+                    if (!int.TryParse(splt[1], out int port)) return;
                     ConnectToServer(splt[0], port);
                     MainMenu.TemporarilyHidden = true;
                     _connectTab.RefreshIndex();
@@ -294,22 +290,22 @@ namespace LiteClient
             _currentOnlinePlayers = 0;
             _currentOnlineServers = 0;
 
-            var fetchThread = new Thread((ThreadStart)delegate
+            Thread fetchThread = new Thread((ThreadStart)delegate
             {
-                if (string.IsNullOrEmpty(MasterAddress))
+                if (string.IsNullOrEmpty(PlayerSettings.MasterServer))
                     return;
                 string response = String.Empty;
                 try
                 {
-                    using (var wc = new Util.ImpatientWebClient())
+                    using (Util.ImpatientWebClient wc = new Util.ImpatientWebClient())
                     {
-                        response = wc.DownloadString(MasterAddress);
+                        response = wc.DownloadString(PlayerSettings.MasterServer);
                     }
                 }
                 catch (Exception e)
                 {
                     UI.Notify("~r~~h~ERROR~h~~w~~n~Could not contact master server. Try again later.");
-                    var logOutput = "===== EXCEPTION CONTACTING MASTER SERVER @ " + DateTime.UtcNow + " ======\n";
+                    string logOutput = "===== EXCEPTION CONTACTING MASTER SERVER @ " + DateTime.UtcNow + " ======\n";
                     logOutput += "Message: " + e.Message;
                     logOutput += "\nData: " + e.Data;
                     logOutput += "\nStack: " + e.StackTrace;
@@ -325,13 +321,11 @@ namespace LiteClient
                 if (string.IsNullOrWhiteSpace(response))
                     return;
 
-                var dejson = JsonConvert.DeserializeObject<MasterServerList>(response) as MasterServerList;
-
-                if (dejson == null) return;
+                if (!(JsonConvert.DeserializeObject<MasterServerList>(response) is MasterServerList dejson)) return;
 
                 if (_client == null)
                 {
-                    var port = GetOpenUdpPort();
+                    int port = GetOpenUdpPort();
                     if (port == 0)
                     {
                         UI.Notify("No available UDP port was found.");
@@ -341,20 +335,20 @@ namespace LiteClient
                     _client = new NetClient(_config);
                     _client.Start();
                 }
-                var list = new List<string>();
 
-                foreach (var server in dejson.List)
+                List<string> list = new List<string>();
+
+                foreach (string server in dejson.List)
                 {
-                    var split = server.Split(':');
-                    if (split.Length != 2) continue;
-                    int port;
-                    if (!int.TryParse(split[1], out port))
-                        continue;
+                    string[] split = server.Split(':');
+                    if (split.Length != 2 || !int.TryParse(split[1], out int port)) continue;
+
                     list.Add(server);
 
-
-                    var item = new UIMenuItem(server);
-                    item.Description = server;
+                    UIMenuItem item = new UIMenuItem(server)
+                    {
+                        Description = server
+                    };
 
                     int lastIndx = 0;
                     if (_serverBrowser.Items.Count > 0)
@@ -386,7 +380,7 @@ namespace LiteClient
                     {
                         Thread.Sleep(3000);
                     }
-                    var spl = list[i].Split(':');
+                    string[] spl = list[i].Split(':');
                     _client.DiscoverKnownPeer(spl[0], int.Parse(spl[1]));
                 }
             });
@@ -408,9 +402,9 @@ namespace LiteClient
 
             _serverPlayers.Dictionary.Add(PlayerSettings.DisplayName, ((int)(Latency * 1000)) + "ms");
 
-            foreach (var ped in list)
+            foreach (SyncPed ped in list)
             {
-                _serverPlayers.Dictionary.Add(ped.Name == null ? "<Unknown>" : ped.Name, ((int)(ped.Latency * 1000)) + "ms");
+                _serverPlayers.Dictionary.Add(ped.Name ?? "<Unknown>", ((int)(ped.Latency * 1000)) + "ms");
             }
         }
 
@@ -427,22 +421,24 @@ namespace LiteClient
 
             #region Welcome Screen
             {
-                var welcomeItem = new TabTextItem("Welcome", "Welcome to LiteMP", "Join a server on the right! Weekly Updates!\n\nwww.lite-mp.com");
+                TabTextItem welcomeItem = new TabTextItem("Welcome", "Welcome to LiteMP", "Join a server on the right! Weekly Updates!\n\nwww.lite-mp.com");
                 MainMenu.Tabs.Add(welcomeItem);
             }
             #endregion
 
             #region ServerBrowser
             {
-                var dConnect = new TabButtonArrayItem("Quick Connect");
+                TabButtonArrayItem dConnect = new TabButtonArrayItem("Quick Connect");
 
                 {
-                    var ipButton = new TabButton();
-                    ipButton.Text = "IP Address";
-                    ipButton.Size = new Size(500, 40);
+                    TabButton ipButton = new TabButton
+                    {
+                        Text = "IP Address",
+                        Size = new Size(500, 40)
+                    };
                     ipButton.Activated += (sender, args) =>
                     {
-                        var newIp = InputboxThread.GetUserInput(_clientIp ?? "", 30, TickSpinner);
+                        string newIp = InputboxThread.GetUserInput(_clientIp ?? "", 30, TickSpinner);
                         _clientIp = newIp;
                         ipButton.Text = string.IsNullOrWhiteSpace(newIp) ? "IP Address" : newIp;
                     };
@@ -450,17 +446,18 @@ namespace LiteClient
                 }
 
                 {
-                    var ipButton = new TabButton();
-                    ipButton.Text = "Port";
-                    ipButton.Size = new Size(500, 40);
+                    TabButton ipButton = new TabButton
+                    {
+                        Text = "Port",
+                        Size = new Size(500, 40)
+                    };
                     ipButton.Activated += (sender, args) =>
                     {
-                        var newIp = InputboxThread.GetUserInput(Port.ToString(), 30, TickSpinner);
+                        string newIp = InputboxThread.GetUserInput(Port.ToString(), 30, TickSpinner);
 
                         if (string.IsNullOrWhiteSpace(newIp)) return;
 
-                        int newPort;
-                        if (!int.TryParse(newIp, out newPort))
+                        if (!int.TryParse(newIp, out int newPort))
                         {
                             UI.Notify("Wrong port format!");
                             return;
@@ -472,12 +469,14 @@ namespace LiteClient
                 }
 
                 {
-                    var ipButton = new TabButton();
-                    ipButton.Text = "Password";
-                    ipButton.Size = new Size(500, 40);
+                    TabButton ipButton = new TabButton
+                    {
+                        Text = "Password",
+                        Size = new Size(500, 40)
+                    };
                     ipButton.Activated += (sender, args) =>
                     {
-                        var newIp = InputboxThread.GetUserInput("", 30, TickSpinner);
+                        string newIp = InputboxThread.GetUserInput("", 30, TickSpinner);
                         _password = newIp;
                         ipButton.Text = string.IsNullOrWhiteSpace(newIp) ? "Password" : "*******";
                     };
@@ -485,9 +484,11 @@ namespace LiteClient
                 }
 
                 {
-                    var ipButton = new TabButton();
-                    ipButton.Text = "Connect";
-                    ipButton.Size = new Size(500, 40);
+                    TabButton ipButton = new TabButton
+                    {
+                        Text = "Connect",
+                        Size = new Size(500, 40)
+                    };
                     ipButton.Activated += (sender, args) =>
                     {
                         AddServerToRecent(_clientIp + ":" + Port, _password);
@@ -518,12 +519,12 @@ namespace LiteClient
                         MainMenu.DrawInstructionalButton(5, Control.Enter, "Favorite");
                         if (Game.IsControlJustPressed(0, Control.Enter))
                         {
-                            var selectedServer = _serverBrowser.Items[_serverBrowser.Index];
+                            UIMenuItem selectedServer = _serverBrowser.Items[_serverBrowser.Index];
                             selectedServer.SetRightBadge(UIMenuItem.BadgeStyle.None);
                             if (PlayerSettings.FavoriteServers.Contains(selectedServer.Description))
                             {
                                 RemoveFromFavorites(selectedServer.Description);
-                                var favItem = _favBrowser.Items.FirstOrDefault(i => i.Description == selectedServer.Description);
+                                UIMenuItem favItem = _favBrowser.Items.FirstOrDefault(i => i.Description == selectedServer.Description);
                                 if (favItem != null)
                                 {
                                     _favBrowser.Items.Remove(favItem);
@@ -534,8 +535,10 @@ namespace LiteClient
                             {
                                 AddToFavorites(selectedServer.Description);
                                 selectedServer.SetRightBadge(UIMenuItem.BadgeStyle.Star);
-                                var item = new UIMenuItem(selectedServer.Text);
-                                item.Description = selectedServer.Description;
+                                UIMenuItem item = new UIMenuItem(selectedServer.Text)
+                                {
+                                    Description = selectedServer.Description
+                                };
                                 item.SetRightLabel(selectedServer.RightLabel);
                                 item.SetLeftBadge(selectedServer.LeftBadge);
                                 item.Activated += (faf, selectedItem) =>
@@ -564,11 +567,9 @@ namespace LiteClient
                                         _password = Game.GetUserInput(256);
                                     }
 
-                                    var splt = selectedServer.Description.Split(':');
+                                    string[] splt = selectedServer.Description.Split(':');
 
-                                    if (splt.Length < 2) return;
-                                    int port;
-                                    if (!int.TryParse(splt[1], out port)) return;
+                                    if (splt.Length < 2 || !int.TryParse(splt[1], out int port)) return;
 
                                     ConnectToServer(splt[0], port);
                                     MainMenu.TemporarilyHidden = true;
@@ -585,7 +586,7 @@ namespace LiteClient
                         MainMenu.DrawInstructionalButton(5, Control.Enter, "Favorite by IP");
                         if (Game.IsControlJustPressed(0, Control.Enter))
                         {
-                            var serverIp = InputboxThread.GetUserInput("Server IP:Port", 40, TickSpinner);
+                            string serverIp = InputboxThread.GetUserInput("Server IP:Port", 40, TickSpinner);
 
                             if (!serverIp.Contains(":"))
                             {
@@ -596,8 +597,10 @@ namespace LiteClient
                             if (!PlayerSettings.FavoriteServers.Contains(serverIp))
                             {
                                 AddToFavorites(serverIp);
-                                var item = new UIMenuItem(serverIp);
-                                item.Description = serverIp;
+                                UIMenuItem item = new UIMenuItem(serverIp)
+                                {
+                                    Description = serverIp
+                                };
                                 item.Activated += (faf, selectedItem) =>
                                 {
                                     if (IsOnServer())
@@ -619,11 +622,9 @@ namespace LiteClient
                                         while (IsOnServer()) Script.Yield();
                                     }
 
-                                    var splt = serverIp.Split(':');
+                                    string[] splt = serverIp.Split(':');
 
-                                    if (splt.Length < 2) return;
-                                    int port;
-                                    if (!int.TryParse(splt[1], out port)) return;
+                                    if (splt.Length < 2 || !int.TryParse(splt[1], out int port)) return;
 
                                     ConnectToServer(splt[0], port);
                                     MainMenu.TemporarilyHidden = true;
@@ -642,13 +643,13 @@ namespace LiteClient
 
             {
 
-                var internetServers = new TabInteractiveListItem("Multiplayer", new List<UIMenuItem>());
+                TabInteractiveListItem internetServers = new TabInteractiveListItem("Multiplayer", new List<UIMenuItem>());
                 {
-                    var nameItem = new UIMenuItem("Name");
+                    UIMenuItem nameItem = new UIMenuItem("Name");
                     nameItem.SetRightLabel(PlayerSettings.DisplayName);
                     nameItem.Activated += (sender, item) =>
                     {
-                        var newName = InputboxThread.GetUserInput(PlayerSettings.DisplayName ?? "Enter new name", 40, TickSpinner);
+                        string newName = InputboxThread.GetUserInput(PlayerSettings.DisplayName ?? "Enter new name", 40, TickSpinner);
                         if (!string.IsNullOrWhiteSpace(newName))
                         {
                             PlayerSettings.DisplayName = newName;
@@ -661,16 +662,19 @@ namespace LiteClient
                 }
 
                 {
-                    var npcItem = new UIMenuCheckboxItem("Share World With Players", false);
+                    UIMenuCheckboxItem npcItem = new UIMenuCheckboxItem("Share World With Players", false);
                     npcItem.CheckboxEvent += (item, check) =>
                     {
                         SendNpcs = check;
                         if (!check && _client != null)
                         {
-                            var msg = _client.CreateMessage();
-                            var obj = new PlayerDisconnect();
-                            obj.Id = _client.UniqueIdentifier;
-                            var bin = SerializeBinary(obj);
+                            NetOutgoingMessage msg = _client.CreateMessage();
+                            PlayerDisconnect obj = new PlayerDisconnect
+                            {
+                                Id = _client.UniqueIdentifier
+                            };
+
+                            byte[] bin = SerializeBinary(obj);
 
                             msg.Write((int)PacketType.WorldSharingStop);
                             msg.Write(bin.Length);
@@ -683,7 +687,7 @@ namespace LiteClient
                 }
 
                 {
-                    var trafficItem = new UIMenuCheckboxItem("Enable Traffic When Sharing (May affect performance)", false);
+                    UIMenuCheckboxItem trafficItem = new UIMenuCheckboxItem("Enable Traffic When Sharing (May affect performance)", false);
                     trafficItem.CheckboxEvent += (item, check) =>
                     {
                         _isTrafficEnabled = check;
@@ -691,9 +695,9 @@ namespace LiteClient
                     internetServers.Items.Add(trafficItem);
                 }
 
-                var otherOptions = new TabInteractiveListItem("Other", new List<UIMenuItem>());
+                TabInteractiveListItem otherOptions = new TabInteractiveListItem("Other", new List<UIMenuItem>());
                 {
-                    var networkMonitoring = new UIMenuCheckboxItem("Network monitoring", false);
+                    UIMenuCheckboxItem networkMonitoring = new UIMenuCheckboxItem("Network monitoring", false);
                     networkMonitoring.CheckboxEvent += (item, check) =>
                     {
                         _networkMonitoring = check;
@@ -703,14 +707,12 @@ namespace LiteClient
 
 #if DEBUG
                 {
-                    var spawnItem = new UIMenuCheckboxItem("Debug", false);
+                    UIMenuCheckboxItem spawnItem = new UIMenuCheckboxItem("Debug", false);
                     spawnItem.CheckboxEvent += (item, check) =>
                     {
                         display = check;
                         if (!display)
                         {
-                            if (mainPed != null) mainPed.Delete();
-                            if (mainVehicle != null) mainVehicle.Delete();
                             if (_debugSyncPed != null)
                             {
                                 _debugSyncPed.Clear();
@@ -726,7 +728,7 @@ namespace LiteClient
                 }
 #endif
 
-                var welcomeItem = new TabSubmenuItem("settings", new List<TabItem>() { internetServers, otherOptions });
+                TabSubmenuItem welcomeItem = new TabSubmenuItem("settings", new List<TabItem>() { internetServers, otherOptions });
                 MainMenu.AddTab(welcomeItem);
             }
 
@@ -738,14 +740,18 @@ namespace LiteClient
             _serverPlayers = new TabItemSimpleList("Players", new Dictionary<string, string>());
             #endregion
 
-            var favTab = new TabTextItem("Favorite", "Add to Favorites", "Add the current server to favorites.");
-            favTab.CanBeFocused = false;
+            TabTextItem favTab = new TabTextItem("Favorite", "Add to Favorites", "Add the current server to favorites.")
+            {
+                CanBeFocused = false
+            };
             favTab.Activated += (sender, args) =>
             {
-                var serb = _currentServerIp + ":" + _currentServerPort;
+                string serb = _currentServerIp + ":" + _currentServerPort;
                 AddToFavorites(_currentServerIp + ":" + _currentServerPort);
-                var item = new UIMenuItem(serb);
-                item.Description = serb;
+                UIMenuItem item = new UIMenuItem(serb)
+                {
+                    Description = serb
+                };
                 UI.Notify("Server added to favorites!");
                 item.Activated += (faf, selectedItem) =>
                 {
@@ -768,11 +774,9 @@ namespace LiteClient
                         while (IsOnServer()) Script.Yield();
                     }
 
-                    var splt = serb.Split(':');
+                    string[] splt = serb.Split(':');
 
-                    if (splt.Length < 2) return;
-                    int port;
-                    if (!int.TryParse(splt[1], out port)) return;
+                    if (splt.Length < 2 || !int.TryParse(splt[1], out int port)) return;
 
                     ConnectToServer(splt[0], port);
                     MainMenu.TemporarilyHidden = true;
@@ -782,8 +786,10 @@ namespace LiteClient
                 _favBrowser.Items.Add(item);
             };
 
-            var dcItem = new TabTextItem("Disconnect", "Disconnect", "Disconnect from the current server.");
-            dcItem.CanBeFocused = false;
+            TabTextItem dcItem = new TabTextItem("Disconnect", "Disconnect", "Disconnect from the current server.")
+            {
+                CanBeFocused = false
+            };
             dcItem.Activated += (sender, args) =>
             {
                 if (_client != null) _client.Disconnect("Connection closed by peer.");
@@ -814,8 +820,9 @@ namespace LiteClient
 
             if (_modSwitch % 30 == 0)
             {
-                var id = _modSwitch / 30;
-                var mod = Game.Player.Character.CurrentVehicle.GetMod((VehicleMod)id);
+                int id = _modSwitch / 30,
+                    mod = Game.Player.Character.CurrentVehicle.GetMod((VehicleMod)id);
+
                 if (mod != -1)
                 {
                     lock (_vehMods)
@@ -838,8 +845,9 @@ namespace LiteClient
         {
             if (_pedSwitch % 30 == 0)
             {
-                var id = _pedSwitch / 30;
-                var mod = Function.Call<int>(Hash.GET_PED_DRAWABLE_VARIATION, Game.Player.Character.Handle, id);
+                int id = _pedSwitch / 30,
+                    mod = Function.Call<int>(Hash.GET_PED_DRAWABLE_VARIATION, Game.Player.Character.Handle, id);
+
                 if (mod != -1)
                 {
                     lock (_pedClothes)
@@ -865,7 +873,7 @@ namespace LiteClient
             if (Environment.TickCount - _lastDataSend < 1000 / _tickRate) return;
             _lastDataSend = Environment.TickCount;
 
-            var player = Game.Player.Character;
+            Ped player = Game.Player.Character;
             if (player.IsInVehicle())
             {
                 Vehicle veh = player.CurrentVehicle;
@@ -1160,7 +1168,7 @@ namespace LiteClient
             if ((time = Function.Call<int>(Hash.GET_TIME_SINCE_LAST_DEATH)) < 50 && !_lastDead)
             {
                 _lastDead = true;
-                var msg = _client.CreateMessage();
+                NetOutgoingMessage msg = _client.CreateMessage();
                 msg.Write((int)PacketType.PlayerKilled);
                 _client.SendMessage(msg, NetDeliveryMethod.ReliableOrdered, 0);
             }
@@ -1236,10 +1244,10 @@ namespace LiteClient
 
             if (e.KeyCode == Keys.G && !Game.Player.Character.IsInVehicle() && IsOnServer())
             {
-                var vehs = World.GetAllVehicles().OrderBy(v => (v.Position - Game.Player.Character.Position).Length()).Take(1).ToList();
+                List<Vehicle> vehs = World.GetAllVehicles().OrderBy(v => (v.Position - Game.Player.Character.Position).Length()).Take(1).ToList();
                 if (vehs.Any() && Game.Player.Character.IsInRangeOf(vehs[0].Position, 6f))
                 {
-                    var relPos = vehs[0].GetOffsetFromWorldCoords(Game.Player.Character.Position);
+                    Vector3 relPos = vehs[0].GetOffsetFromWorldCoords(Game.Player.Character.Position);
                     VehicleSeat seat = VehicleSeat.Any;
 
                     if (relPos.X < 0)
@@ -1320,8 +1328,10 @@ namespace LiteClient
 
             NetOutgoingMessage msg = _client.CreateMessage();
 
-            ConnectionRequest obj = new ConnectionRequest();
-            obj.Name = string.IsNullOrWhiteSpace(Game.Player.Name) ? "Player" : Game.Player.Name; // To be used as identifiers in server files
+            ConnectionRequest obj = new ConnectionRequest
+            {
+                Name = string.IsNullOrWhiteSpace(Game.Player.Name) ? "Player" : Game.Player.Name // To be used as identifiers in server files
+            };
             obj.DisplayName = string.IsNullOrWhiteSpace(PlayerSettings.DisplayName) ? obj.Name : PlayerSettings.DisplayName.Trim();
             if (!string.IsNullOrEmpty(_password)) obj.Password = _password;
             obj.ScriptVersion = (byte)LocalScriptVersion;
@@ -1497,8 +1507,7 @@ namespace LiteClient
                                 {
                                     if (!Npcs.ContainsKey(data.Name))
                                     {
-                                        var repr = new SyncPed(data.PedModelHash, data.Position.ToVector(),
-                                            data.Quaternion.ToVector(), false);
+                                        SyncPed repr = new SyncPed(data.PedModelHash, data.Position.ToVector(), data.Quaternion.ToVector(), false);
                                         Npcs.Add(data.Name, repr);
                                         Npcs[data.Name].Name = "";
                                         Npcs[data.Name].Host = data.Id;
@@ -1527,7 +1536,7 @@ namespace LiteClient
                             {
                                 if (DeserializeBinary<ChatData>(msg.ReadBytes(len)) is ChatData data && !string.IsNullOrEmpty(data.Message))
                                 {
-                                    var sender = string.IsNullOrEmpty(data.Sender) ? "SERVER" : data.Sender;
+                                    string sender = string.IsNullOrEmpty(data.Sender) ? "SERVER" : data.Sender;
                                     _chat.AddMessage(sender, data.Message);
                                 }
                             }
@@ -1543,7 +1552,7 @@ namespace LiteClient
 
                                         lock (Npcs)
                                         {
-                                            foreach (var pair in new Dictionary<string, SyncPed>(Npcs).Where(p => p.Value.Host == data.Id))
+                                            foreach (KeyValuePair<string, SyncPed> pair in new Dictionary<string, SyncPed>(Npcs).Where(p => p.Value.Host == data.Id))
                                             {
                                                 pair.Value.Clear();
                                                 Npcs.Remove(pair.Key);
@@ -1558,7 +1567,7 @@ namespace LiteClient
                                 if (!(DeserializeBinary<PlayerDisconnect>(msg.ReadBytes(len)) is PlayerDisconnect data)) return;
                                 lock (Npcs)
                                 {
-                                    foreach (var pair in new Dictionary<string, SyncPed>(Npcs).Where(p => p.Value.Host == data.Id).ToList())
+                                    foreach (KeyValuePair<string, SyncPed> pair in new Dictionary<string, SyncPed>(Npcs).Where(p => p.Value.Host == data.Id).ToList())
                                     {
                                         pair.Value.Clear();
                                         Npcs.Remove(pair.Key);
@@ -1618,7 +1627,7 @@ namespace LiteClient
                 }
                 else if (msg.MessageType == NetIncomingMessageType.StatusChanged)
                 {
-                    var newStatus = (NetConnectionStatus)msg.ReadByte();
+                    NetConnectionStatus newStatus = (NetConnectionStatus)msg.ReadByte();
                     switch (newStatus)
                     {
                         case NetConnectionStatus.InitiatedConnect:
@@ -1637,7 +1646,7 @@ namespace LiteClient
                             MainMenu.RefreshIndex();
                             break;
                         case NetConnectionStatus.Disconnected:
-                            var reason = msg.ReadString();
+                            string reason = msg.ReadString();
                             UI.Notify("You have been disconnected" + (string.IsNullOrEmpty(reason) ? " from the server." : ": " + reason));
 
                             lock (Opponents)
@@ -1756,9 +1765,9 @@ namespace LiteClient
                         _lanBrowser.Items.Add(item);
                     }
 
-                    foreach (var ourItem in matchedItems.Where(k => k != null))
+                    foreach (UIMenuItem ourItem in matchedItems.Where(k => k != null))
                     {
-                        var gamemode = data.Gamemode ?? "Unknown";
+                        string gamemode = data.Gamemode ?? "Unknown";
 
                         ourItem.Text = data.ServerName;
                         ourItem.SetRightLabel(gamemode + " | " + data.PlayerCount + "/" + data.MaxPlayers);
@@ -1825,7 +1834,7 @@ namespace LiteClient
 
         private void Debug()
         {
-            var player = Game.Player.Character;
+            Ped player = Game.Player.Character;
 
             if (_debugSyncPed == null)
             {
@@ -1838,7 +1847,7 @@ namespace LiteClient
                 _debugFluctuation = _r.Next(10) - 5;
                 if (player.IsInVehicle())
                 {
-                    var veh = player.CurrentVehicle;
+                    Vehicle veh = player.CurrentVehicle;
                     veh.Alpha = 50;
 
                     _debugSyncPed.VehiclePosition = veh.Position;
@@ -1914,9 +1923,9 @@ namespace LiteClient
 
         public void DecodeNativeCall(NativeData obj)
         {
-            var list = new List<InputArgument>();
+            List<InputArgument> list = new List<InputArgument>();
 
-            foreach (var arg in obj.Arguments)
+            foreach (NativeArgument arg in obj.Arguments)
             {
                 if (arg is IntArgument argument)
                 {
@@ -1959,13 +1968,13 @@ namespace LiteClient
                 }
             }
 
-            var nativeType = CheckNativeHash(obj.Hash);
+            NativeType nativeType = CheckNativeHash(obj.Hash);
 
             if ((int)nativeType >= 2)
             {
                 if ((int)nativeType >= 3)
                 {
-                    var modelObj = obj.Arguments[(int)nativeType - 3];
+                    NativeArgument modelObj = obj.Arguments[(int)nativeType - 3];
                     int modelHash = 0;
 
                     if (modelObj is UIntArgument argument)
@@ -1992,7 +2001,7 @@ namespace LiteClient
 
             if (nativeType == NativeType.ReturnsBlip)
             {
-                var blipId = Function.Call<int>((Hash)obj.Hash, list.ToArray());
+                int blipId = Function.Call<int>((Hash)obj.Hash, list.ToArray());
                 lock (_blipCleanup)
                     _blipCleanup.Add(blipId);
 
@@ -2030,16 +2039,16 @@ namespace LiteClient
                 Id = id
             };
 
-            if (response is int)
-                obj.Response = new IntArgument() { Data = ((int)response) };
-            else if (response is uint)
-                obj.Response = new UIntArgument() { Data = ((uint)response) };
-            else if (response is string)
-                obj.Response = new StringArgument() { Data = ((string)response) };
-            else if (response is float)
-                obj.Response = new FloatArgument() { Data = ((float)response) };
-            else if (response is bool)
-                obj.Response = new BooleanArgument() { Data = ((bool)response) };
+            if (response is int int1)
+                obj.Response = new IntArgument() { Data = int1 };
+            else if (response is uint @int)
+                obj.Response = new UIntArgument() { Data = @int };
+            else if (response is string @string)
+                obj.Response = new StringArgument() { Data = @string };
+            else if (response is float single)
+                obj.Response = new FloatArgument() { Data = single };
+            else if (response is bool boolean)
+                obj.Response = new BooleanArgument() { Data = boolean };
             else if (response is Vector3 tmp)
             {
                 obj.Response = new Vector3Argument()
@@ -2149,10 +2158,7 @@ namespace LiteClient
             if (Math.Abs(point2D.X - point2DZero.X) < eps || Math.Abs(point2D.Y - point2DZero.Y) < eps)
                 return camPos + camForward * 10.0f;
 
-            float scaleX = (coord.X - point2DZero.X) / (point2D.X - point2DZero.X),
-                scaleY = (coord.Y - point2DZero.Y) / (point2D.Y - point2DZero.Y);
-            Vector3 point3Dret = camPos + camForward * 10.0f + camRightRoll * scaleX + camUpRoll * scaleY;
-            return point3Dret;
+            return (camPos + camForward * 10.0f + camRightRoll * (coord.X - point2DZero.X) / (point2D.X - point2DZero.X) + camUpRoll * (coord.Y - point2DZero.Y) / (point2D.Y - point2DZero.Y));
         }
 
         public static Vector3 RotationToDirection(Vector3 rotation)

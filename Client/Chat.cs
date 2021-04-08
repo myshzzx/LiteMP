@@ -51,25 +51,23 @@ namespace LiteClient
 
         public void Tick()
         {
-            if (!Main.IsOnServer()) return;
+            if (!Main.IsOnServer())
+                return;
 
             _mainScaleform.Render2D();
 
+            if (!IsFocused)
+                return;
 
-            if (!IsFocused) return;
             Function.Call(Hash.DISABLE_ALL_CONTROL_ACTIONS, 0);
         }
 
         public void AddMessage(string sender, string msg)
         {
             if (string.IsNullOrEmpty(sender))
-            {
                 _mainScaleform.CallFunction("ADD_MESSAGE", "", msg);
-            }
             else
-            {
                 _mainScaleform.CallFunction("ADD_MESSAGE", sender + ":", msg);
-            }
         }
 
         public void Reset()
@@ -81,11 +79,11 @@ namespace LiteClient
         {
             if (key == Keys.PageUp && Main.IsOnServer())
                 _mainScaleform.CallFunction("PAGE_UP");
-
             else if (key == Keys.PageDown && Main.IsOnServer())
                 _mainScaleform.CallFunction("PAGE_DOWN");
 
-            if (!IsFocused) return;
+            if (!IsFocused)
+                return;
 
             if ((key == Keys.ShiftKey && _lastKey == Keys.Menu) || (key == Keys.Menu && _lastKey == Keys.ShiftKey))
                 ActivateKeyboardLayout(1, 0);
@@ -112,16 +110,22 @@ namespace LiteClient
                     CurrentInput = CurrentInput.Substring(0, CurrentInput.Length - 1);
                     _mainScaleform.CallFunction("ADD_TEXT", CurrentInput);
                 }
+
                 return;
             }
-            if (keyChar[0] == (char)13)
+            else if (keyChar[0] == (char)13)
             {
                 _mainScaleform.CallFunction("ADD_TEXT", "ENTER");
-                if (OnComplete != null) OnComplete.Invoke(this, EventArgs.Empty);
+
+                if (OnComplete != null)
+                    OnComplete.Invoke(this, EventArgs.Empty);
+
                 CurrentInput = "";
+
                 return;
             }
-            var str = keyChar;
+
+            string str = keyChar;
 
             CurrentInput += str;
             _mainScaleform.CallFunction("ADD_TEXT", str);
@@ -144,6 +148,7 @@ namespace LiteClient
             var keyboardState = new byte[256];
             if (shift)
                 keyboardState[(int)Keys.ShiftKey] = 0xff;
+
             if (altGr)
             {
                 keyboardState[(int)Keys.ControlKey] = 0xff;
