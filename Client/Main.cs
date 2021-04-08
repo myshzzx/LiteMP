@@ -107,8 +107,10 @@ namespace LiteClient
                 }
             };
 
-            _config = new NetPeerConfiguration("LITEMPNET");
-            _config.Port = 8888;
+            _config = new NetPeerConfiguration("LITEMPNET")
+            {
+                Port = 8888
+            };
             _config.EnableMessageType(NetIncomingMessageType.ConnectionLatencyUpdated);
 
 
@@ -341,7 +343,7 @@ namespace LiteClient
                 }
                 var list = new List<string>();
 
-                foreach (var server in dejson.list)
+                foreach (var server in dejson.List)
                 {
                     var split = server.Split(':');
                     if (split.Length != 2) continue;
@@ -866,16 +868,16 @@ namespace LiteClient
             var player = Game.Player.Character;
             if (player.IsInVehicle())
             {
-                var veh = player.CurrentVehicle;
+                Vehicle veh = player.CurrentVehicle;
 
-                var siren = veh.SirenActive;
-                var horn = Game.Player.IsPressingHorn;
-                var burnout = veh.IsInBurnout();
-                var highBeams = veh.HighBeamsOn;
-                var lights = veh.LightsOn;
-                var engine = veh.EngineRunning;
+                bool siren = veh.SirenActive,
+                    horn = Game.Player.IsPressingHorn,
+                    burnout = veh.IsInBurnout(),
+                    highBeams = veh.HighBeamsOn,
+                    lights = veh.LightsOn,
+                    engine = veh.EngineRunning;
 
-                var obj = new VehicleData();
+                VehicleData obj = new VehicleData();
                 obj.Position = veh.Position.ToLVector();
                 obj.Quaternion = veh.Rotation.ToLVector();
                 obj.Velocity = veh.Velocity.ToLVector();
@@ -914,9 +916,9 @@ namespace LiteClient
                 if (engine)
                     obj.Flag |= (byte)VehicleDataFlags.IsEngineRunning;
 
-                var bin = SerializeBinary(obj);
+                byte[] bin = SerializeBinary(obj);
 
-                var msg = _client.CreateMessage();
+                NetOutgoingMessage msg = _client.CreateMessage();
                 msg.Write((int)PacketType.VehiclePositionData);
                 msg.Write(bin.Length);
                 msg.Write(bin);
@@ -932,16 +934,15 @@ namespace LiteClient
             }
             else
             {
-                bool aiming = Game.IsControlPressed(0, GTA.Control.Aim);
-                bool shooting = player.IsShooting;
-                bool jumping = player.IsJumping;
+                bool aiming = Game.IsControlPressed(0, GTA.Control.Aim),
+                    shooting = player.IsShooting,
+                    jumping = player.IsJumping;
 
                 Vector3 aimCoord = new Vector3();
                 if (aiming || shooting)
-                    aimCoord = ScreenRelToWorld(GameplayCamera.Position, GameplayCamera.Rotation,
-                        new Vector2(0, 0));
+                    aimCoord = ScreenRelToWorld(GameplayCamera.Position, GameplayCamera.Rotation, new Vector2(0, 0));
 
-                var obj = new PedData();
+                PedData obj = new PedData();
                 obj.AimCoords = aimCoord.ToLVector();
                 obj.Position = player.Position.ToLVector();
                 obj.Quaternion = player.Rotation.ToLVector();
@@ -965,9 +966,9 @@ namespace LiteClient
 
                 obj.PedProps = CheckPlayerProps();
 
-                var bin = SerializeBinary(obj);
+                byte[] bin = SerializeBinary(obj);
 
-                var msg = _client.CreateMessage();
+                NetOutgoingMessage msg = _client.CreateMessage();
 
                 msg.Write((int)PacketType.PedPositionData);
                 msg.Write(bin.Length);
@@ -988,15 +989,15 @@ namespace LiteClient
         {
             if (ped.IsInVehicle())
             {
-                var veh = ped.CurrentVehicle;
+                Vehicle veh = ped.CurrentVehicle;
 
-                var siren = veh.SirenActive;
-                var burnout = veh.IsInBurnout();
-                var highBeams = veh.HighBeamsOn;
-                var lights = veh.LightsOn;
-                var engine = veh.EngineRunning;
+                bool siren = veh.SirenActive,
+                    burnout = veh.IsInBurnout(),
+                    highBeams = veh.HighBeamsOn,
+                    lights = veh.LightsOn,
+                    engine = veh.EngineRunning;
 
-                var obj = new VehicleData();
+                VehicleData obj = new VehicleData();
                 obj.Position = veh.Position.ToLVector();
                 obj.Quaternion = veh.Rotation.ToLVector();
                 obj.Velocity = veh.Velocity.ToLVector();
@@ -1030,9 +1031,9 @@ namespace LiteClient
                     obj.Flag |= (byte)VehicleDataFlags.IsEngineRunning;
 
 
-                var bin = SerializeBinary(obj);
+                byte[] bin = SerializeBinary(obj);
 
-                var msg = _client.CreateMessage();
+                NetOutgoingMessage msg = _client.CreateMessage();
                 msg.Write((int)PacketType.NpcVehPositionData);
                 msg.Write(bin.Length);
                 msg.Write(bin);
@@ -1048,15 +1049,15 @@ namespace LiteClient
             }
             else
             {
-                bool shooting = ped.IsShooting;
-                bool aiming = Game.IsControlPressed(0, GTA.Control.Aim);
-                bool jumping = ped.IsJumping;
+                bool shooting = ped.IsShooting,
+                    aiming = Game.IsControlPressed(0, GTA.Control.Aim),
+                    jumping = ped.IsJumping;
 
                 Vector3 aimCoord = new Vector3();
                 if (shooting)
                     aimCoord = Util.GetLastWeaponImpact(ped);
 
-                var obj = new PedData();
+                PedData obj = new PedData();
                 obj.AimCoords = aimCoord.ToLVector();
                 obj.Position = ped.Position.ToLVector();
                 obj.Quaternion = ped.Rotation.ToLVector();
@@ -1079,9 +1080,9 @@ namespace LiteClient
                 if (Function.Call<int>(Hash.GET_PED_PARACHUTE_STATE, Game.Player.Character.Handle) == 2)
                     obj.Flag |= (byte)PedDataFlags.IsParachuteOpen;
 
-                var bin = SerializeBinary(obj);
+                byte[] bin = SerializeBinary(obj);
 
-                var msg = _client.CreateMessage();
+                NetOutgoingMessage msg = _client.CreateMessage();
 
                 msg.Write((int)PacketType.NpcPedPositionData);
                 msg.Write(bin.Length);
@@ -1099,13 +1100,11 @@ namespace LiteClient
         }
 
         // netstats
-        private int _lastBytesSent;
-        private int _lastBytesReceived;
-        private int _lastCheck;
-
-        private int _bytesSentPerSecond;
-        private int _bytesReceivedPerSecond;
-        //
+        private int _lastBytesSent,
+            _lastBytesReceived,
+            _lastCheck,
+            _bytesSentPerSecond,
+            _bytesReceivedPerSecond;
 
         public void OnTick(object sender, EventArgs e)
         {
@@ -1130,6 +1129,7 @@ namespace LiteClient
 
             if (!BlockControls)
                 MainMenu.ProcessControls();
+
             MainMenu.Update();
             MainMenu.CanLeave = IsOnServer();
 
@@ -1207,7 +1207,8 @@ namespace LiteClient
                 if (_threadJumping.Any())
                 {
                     Action action = _threadJumping.Dequeue();
-                    if (action != null) action.Invoke();
+                    if (action != null)
+                        action.Invoke();
                 }
             }
 
@@ -1230,9 +1231,7 @@ namespace LiteClient
                 MainMenu.Visible = !MainMenu.Visible;
 
                 if (MainMenu.Visible)
-                {
                     RebuildPlayersList();
-                }
             }
 
             if (e.KeyCode == Keys.G && !Game.Player.Character.IsInVehicle() && IsOnServer())
@@ -1243,21 +1242,19 @@ namespace LiteClient
                     var relPos = vehs[0].GetOffsetFromWorldCoords(Game.Player.Character.Position);
                     VehicleSeat seat = VehicleSeat.Any;
 
-                    if (relPos.X < 0 && relPos.Y > 0)
+                    if (relPos.X < 0)
                     {
-                        seat = VehicleSeat.RightFront;
+                        if (relPos.Y > 0)
+                            seat = VehicleSeat.RightFront;
+                        else
+                            seat = VehicleSeat.LeftRear;
                     }
-                    else if (relPos.X >= 0 && relPos.Y > 0)
+                    else
                     {
-                        seat = VehicleSeat.RightFront;
-                    }
-                    else if (relPos.X < 0 && relPos.Y <= 0)
-                    {
-                        seat = VehicleSeat.LeftRear;
-                    }
-                    else if (relPos.X >= 0 && relPos.Y <= 0)
-                    {
-                        seat = VehicleSeat.RightRear;
+                        if (relPos.Y > 0)
+                            seat = VehicleSeat.RightFront;
+                        else
+                            seat = VehicleSeat.RightRear;
                     }
 
                     if (vehs[0].PassengerSeats == 1) seat = VehicleSeat.Passenger;
@@ -1268,22 +1265,20 @@ namespace LiteClient
                         {
                             for (int i = 3; i < vehs[0].PassengerSeats; i += 2)
                             {
-                                if (vehs[0].GetPedOnSeat((VehicleSeat)i).Handle == 0)
-                                {
-                                    seat = (VehicleSeat)i;
-                                    break;
-                                }
+                                if (vehs[0].GetPedOnSeat((VehicleSeat)i).Handle != 0) continue;
+
+                                seat = (VehicleSeat)i;
+                                break;
                             }
                         }
                         else if (seat == VehicleSeat.RightRear)
                         {
                             for (int i = 4; i < vehs[0].PassengerSeats; i += 2)
                             {
-                                if (vehs[0].GetPedOnSeat((VehicleSeat)i).Handle == 0)
-                                {
-                                    seat = (VehicleSeat)i;
-                                    break;
-                                }
+                                if (vehs[0].GetPedOnSeat((VehicleSeat)i).Handle != 0) continue;
+
+                                seat = (VehicleSeat)i;
+                                break;
                             }
                         }
                     }
@@ -1308,7 +1303,7 @@ namespace LiteClient
 
             if (_client == null)
             {
-                var cport = GetOpenUdpPort();
+                int cport = GetOpenUdpPort();
                 if (cport == 0)
                 {
                     UI.Notify("No available UDP port was found.");
@@ -1323,16 +1318,16 @@ namespace LiteClient
             lock (Npcs) Npcs = new Dictionary<string, SyncPed>();
             lock (_tickNatives) _tickNatives = new Dictionary<string, NativeData>();
 
-            var msg = _client.CreateMessage();
+            NetOutgoingMessage msg = _client.CreateMessage();
 
-            var obj = new ConnectionRequest();
+            ConnectionRequest obj = new ConnectionRequest();
             obj.Name = string.IsNullOrWhiteSpace(Game.Player.Name) ? "Player" : Game.Player.Name; // To be used as identifiers in server files
             obj.DisplayName = string.IsNullOrWhiteSpace(PlayerSettings.DisplayName) ? obj.Name : PlayerSettings.DisplayName.Trim();
             if (!string.IsNullOrEmpty(_password)) obj.Password = _password;
             obj.ScriptVersion = (byte)LocalScriptVersion;
             obj.GameVersion = (int)Game.Version;
 
-            var bin = SerializeBinary(obj);
+            byte[] bin = SerializeBinary(obj);
 
             msg.Write((int)PacketType.ConnectionRequest);
             msg.Write(bin.Length);
@@ -1340,7 +1335,7 @@ namespace LiteClient
 
             _client.Connect(ip, port == 0 ? Port : port, msg);
 
-            var pos = Game.Player.Character.Position;
+            Vector3 pos = Game.Player.Character.Position;
             Function.Call(Hash.CLEAR_AREA_OF_PEDS, pos.X, pos.Y, pos.Z, 100f, 0);
             Function.Call(Hash.CLEAR_AREA_OF_VEHICLES, pos.X, pos.Y, pos.Z, 100f, 0);
 
@@ -1362,34 +1357,30 @@ namespace LiteClient
 
                 if (msg.MessageType == NetIncomingMessageType.Data)
                 {
-                    var type = (PacketType)msg.ReadInt32();
+                    PacketType type = (PacketType)msg.ReadInt32();
+                    int len = msg.ReadInt32();
+
                     switch (type)
                     {
                         case PacketType.VehiclePositionData:
                             {
-                                var len = msg.ReadInt32();
-                                var data = DeserializeBinary<VehicleData>(msg.ReadBytes(len)) as VehicleData;
-                                if (data == null) return;
+                                if (!(DeserializeBinary<VehicleData>(msg.ReadBytes(len)) is VehicleData data)) return;
 
                                 lock (Opponents)
                                 {
                                     if (!Opponents.ContainsKey(data.Id))
                                     {
-                                        var repr = new SyncPed(data.PedModelHash, data.Position.ToVector(),
-                                            data.Quaternion.ToVector());
+                                        SyncPed repr = new SyncPed(data.PedModelHash, data.Position.ToVector(), data.Quaternion.ToVector());
                                         Opponents.Add(data.Id, repr);
                                     }
 
                                     Opponents[data.Id].Name = data.Name;
                                     Opponents[data.Id].LastUpdateReceived = Environment.TickCount;
-                                    Opponents[data.Id].VehiclePosition =
-                                        data.Position.ToVector();
+                                    Opponents[data.Id].VehiclePosition = data.Position.ToVector();
                                     Opponents[data.Id].VehicleVelocity = data.Velocity.ToVector();
                                     Opponents[data.Id].ModelHash = data.PedModelHash;
-                                    Opponents[data.Id].VehicleHash =
-                                        data.VehicleModelHash;
-                                    Opponents[data.Id].VehicleRotation =
-                                        data.Quaternion.ToVector();
+                                    Opponents[data.Id].VehicleHash = data.VehicleModelHash;
+                                    Opponents[data.Id].VehicleRotation = data.Quaternion.ToVector();
                                     Opponents[data.Id].PedHealth = data.PlayerHealth;
                                     Opponents[data.Id].VehicleHealth = data.VehicleHealth;
                                     Opponents[data.Id].VehiclePrimaryColor = data.PrimaryColor;
@@ -1420,16 +1411,13 @@ namespace LiteClient
                             break;
                         case PacketType.PedPositionData:
                             {
-                                var len = msg.ReadInt32();
-                                var data = DeserializeBinary<PedData>(msg.ReadBytes(len)) as PedData;
-                                if (data == null) return;
+                                if (!(DeserializeBinary<PedData>(msg.ReadBytes(len)) is PedData data)) return;
 
                                 lock (Opponents)
                                 {
                                     if (!Opponents.ContainsKey(data.Id))
                                     {
-                                        var repr = new SyncPed(data.PedModelHash, data.Position.ToVector(),
-                                            data.Quaternion.ToVector());
+                                        SyncPed repr = new SyncPed(data.PedModelHash, data.Position.ToVector(), data.Quaternion.ToVector());
                                         Opponents.Add(data.Id, repr);
                                     }
 
@@ -1457,30 +1445,24 @@ namespace LiteClient
                             break;
                         case PacketType.NpcVehPositionData:
                             {
-                                var len = msg.ReadInt32();
-                                var data = DeserializeBinary<VehicleData>(msg.ReadBytes(len)) as VehicleData;
-                                if (data == null) return;
+                                if (!(DeserializeBinary<VehicleData>(msg.ReadBytes(len)) is VehicleData data)) return;
 
                                 lock (Npcs)
                                 {
                                     if (!Npcs.ContainsKey(data.Name))
                                     {
-                                        var repr = new SyncPed(data.PedModelHash, data.Position.ToVector(),
-                                            data.Quaternion.ToVector(), false);
+                                        SyncPed repr = new SyncPed(data.PedModelHash, data.Position.ToVector(), data.Quaternion.ToVector(), false);
                                         Npcs.Add(data.Name, repr);
                                         Npcs[data.Name].Name = "";
                                         Npcs[data.Name].Host = data.Id;
                                     }
 
                                     Npcs[data.Name].LastUpdateReceived = Environment.TickCount;
-                                    Npcs[data.Name].VehiclePosition =
-                                        data.Position.ToVector();
+                                    Npcs[data.Name].VehiclePosition = data.Position.ToVector();
                                     Npcs[data.Name].VehicleVelocity = data.Velocity.ToVector();
                                     Npcs[data.Name].ModelHash = data.PedModelHash;
-                                    Npcs[data.Name].VehicleHash =
-                                        data.VehicleModelHash;
-                                    Npcs[data.Name].VehicleRotation =
-                                        data.Quaternion.ToVector();
+                                    Npcs[data.Name].VehicleHash = data.VehicleModelHash;
+                                    Npcs[data.Name].VehicleRotation = data.Quaternion.ToVector();
                                     Npcs[data.Name].PedHealth = data.PlayerHealth;
                                     Npcs[data.Name].VehicleHealth = data.VehicleHealth;
                                     Npcs[data.Name].VehiclePrimaryColor = data.PrimaryColor;
@@ -1509,9 +1491,7 @@ namespace LiteClient
                             break;
                         case PacketType.NpcPedPositionData:
                             {
-                                var len = msg.ReadInt32();
-                                var data = DeserializeBinary<PedData>(msg.ReadBytes(len)) as PedData;
-                                if (data == null) return;
+                                if (!(DeserializeBinary<PedData>(msg.ReadBytes(len)) is PedData data)) return;
 
                                 lock (Npcs)
                                 {
@@ -1545,9 +1525,7 @@ namespace LiteClient
                             break;
                         case PacketType.ChatData:
                             {
-                                var len = msg.ReadInt32();
-                                var data = DeserializeBinary<ChatData>(msg.ReadBytes(len)) as ChatData;
-                                if (data != null && !string.IsNullOrEmpty(data.Message))
+                                if (DeserializeBinary<ChatData>(msg.ReadBytes(len)) is ChatData data && !string.IsNullOrEmpty(data.Message))
                                 {
                                     var sender = string.IsNullOrEmpty(data.Sender) ? "SERVER" : data.Sender;
                                     _chat.AddMessage(sender, data.Message);
@@ -1556,11 +1534,9 @@ namespace LiteClient
                             break;
                         case PacketType.PlayerDisconnect:
                             {
-                                var len = msg.ReadInt32();
-                                var data = DeserializeBinary<PlayerDisconnect>(msg.ReadBytes(len)) as PlayerDisconnect;
                                 lock (Opponents)
                                 {
-                                    if (data != null && Opponents.ContainsKey(data.Id))
+                                    if (DeserializeBinary<PlayerDisconnect>(msg.ReadBytes(len)) is PlayerDisconnect data && Opponents.ContainsKey(data.Id))
                                     {
                                         Opponents[data.Id].Clear();
                                         Opponents.Remove(data.Id);
@@ -1579,9 +1555,7 @@ namespace LiteClient
                             break;
                         case PacketType.WorldSharingStop:
                             {
-                                var len = msg.ReadInt32();
-                                var data = DeserializeBinary<PlayerDisconnect>(msg.ReadBytes(len)) as PlayerDisconnect;
-                                if (data == null) return;
+                                if (!(DeserializeBinary<PlayerDisconnect>(msg.ReadBytes(len)) is PlayerDisconnect data)) return;
                                 lock (Npcs)
                                 {
                                     foreach (var pair in new Dictionary<string, SyncPed>(Npcs).Where(p => p.Value.Host == data.Id).ToList())
@@ -1594,16 +1568,14 @@ namespace LiteClient
                             break;
                         case PacketType.NativeCall:
                             {
-                                var len = msg.ReadInt32();
-                                var data = (NativeData)DeserializeBinary<NativeData>(msg.ReadBytes(len));
+                                NativeData data = (NativeData)DeserializeBinary<NativeData>(msg.ReadBytes(len));
                                 if (data == null) return;
                                 DecodeNativeCall(data);
                             }
                             break;
                         case PacketType.NativeTick:
                             {
-                                var len = msg.ReadInt32();
-                                var data = (NativeTickCall)DeserializeBinary<NativeTickCall>(msg.ReadBytes(len));
+                                NativeTickCall data = (NativeTickCall)DeserializeBinary<NativeTickCall>(msg.ReadBytes(len));
                                 if (data == null) return;
                                 lock (_tickNatives)
                                 {
@@ -1615,16 +1587,14 @@ namespace LiteClient
                             break;
                         case PacketType.NativeTickRecall:
                             {
-                                var len = msg.ReadInt32();
-                                var data = (NativeTickCall)DeserializeBinary<NativeTickCall>(msg.ReadBytes(len));
+                                NativeTickCall data = (NativeTickCall)DeserializeBinary<NativeTickCall>(msg.ReadBytes(len));
                                 if (data == null) return;
                                 lock (_tickNatives) if (_tickNatives.ContainsKey(data.Identifier)) _tickNatives.Remove(data.Identifier);
                             }
                             break;
                         case PacketType.NativeOnDisconnect:
                             {
-                                var len = msg.ReadInt32();
-                                var data = (NativeData)DeserializeBinary<NativeData>(msg.ReadBytes(len));
+                                NativeData data = (NativeData)DeserializeBinary<NativeData>(msg.ReadBytes(len));
                                 if (data == null) return;
                                 lock (_dcNatives)
                                 {
@@ -1635,8 +1605,7 @@ namespace LiteClient
                             break;
                         case PacketType.NativeOnDisconnectRecall:
                             {
-                                var len = msg.ReadInt32();
-                                var data = (NativeData)DeserializeBinary<NativeData>(msg.ReadBytes(len));
+                                NativeData data = (NativeData)DeserializeBinary<NativeData>(msg.ReadBytes(len));
                                 if (data == null) return;
                                 lock (_dcNatives) if (_dcNatives.ContainsKey(data.Id)) _dcNatives.Remove(data.Id);
                             }
@@ -1672,22 +1641,18 @@ namespace LiteClient
                             UI.Notify("You have been disconnected" + (string.IsNullOrEmpty(reason) ? " from the server." : ": " + reason));
 
                             lock (Opponents)
-                            {
                                 if (Opponents != null)
                                 {
                                     Opponents.ToList().ForEach(pair => pair.Value.Clear());
                                     Opponents.Clear();
                                 }
-                            }
 
                             lock (Npcs)
-                            {
                                 if (Npcs != null)
                                 {
                                     Npcs.ToList().ForEach(pair => pair.Value.Clear());
                                     Npcs.Clear();
                                 }
-                            }
 
                             lock (_dcNatives)
                                 if (_dcNatives != null && _dcNatives.Any())
@@ -1696,18 +1661,22 @@ namespace LiteClient
                                     _dcNatives.Clear();
                                 }
 
-                            lock (_tickNatives) if (_tickNatives != null) _tickNatives.Clear();
+                            lock (_tickNatives)
+                                if (_tickNatives != null)
+                                    _tickNatives.Clear();
 
                             lock (_entityCleanup)
                             {
                                 _entityCleanup.ForEach(ent => new Prop(ent).Delete());
                                 _entityCleanup.Clear();
                             }
+
                             lock (_blipCleanup)
                             {
                                 _blipCleanup.ForEach(blip => new Blip(blip).Remove());
                                 _blipCleanup.Clear();
                             }
+
                             _chat.Reset();
                             MainMenu.Tabs.Remove(_serverItem);
                             MainMenu.RefreshIndex();
@@ -1716,20 +1685,20 @@ namespace LiteClient
                 }
                 else if (msg.MessageType == NetIncomingMessageType.DiscoveryResponse)
                 {
-                    var type = msg.ReadInt32();
-                    var len = msg.ReadInt32();
-                    var bin = msg.ReadBytes(len);
-                    var data = DeserializeBinary<DiscoveryResponse>(bin) as DiscoveryResponse;
-                    if (data == null) return;
+                    int type = msg.ReadInt32(),
+                        len = msg.ReadInt32();
+                    byte[] bin = msg.ReadBytes(len);
+                    if (!(DeserializeBinary<DiscoveryResponse>(bin) is DiscoveryResponse data)) return;
 
-                    var itemText = msg.SenderEndPoint.Address.ToString() + ":" + data.Port;
+                    string itemText = msg.SenderEndPoint.Address.ToString() + ":" + data.Port;
 
-                    var matchedItems = new List<UIMenuItem>();
-
-                    matchedItems.Add(_serverBrowser.Items.FirstOrDefault(i => i.Description == itemText));
-                    matchedItems.Add(_recentBrowser.Items.FirstOrDefault(i => i.Description == itemText));
-                    matchedItems.Add(_favBrowser.Items.FirstOrDefault(i => i.Description == itemText));
-                    matchedItems.Add(_lanBrowser.Items.FirstOrDefault(i => i.Description == itemText));
+                    List<UIMenuItem> matchedItems = new List<UIMenuItem>
+                    {
+                        _serverBrowser.Items.FirstOrDefault(i => i.Description == itemText),
+                        _recentBrowser.Items.FirstOrDefault(i => i.Description == itemText),
+                        _favBrowser.Items.FirstOrDefault(i => i.Description == itemText),
+                        _lanBrowser.Items.FirstOrDefault(i => i.Description == itemText)
+                    };
 
                     _currentOnlinePlayers += data.PlayerCount;
 
@@ -1737,8 +1706,8 @@ namespace LiteClient
 
                     if (data.LAN)
                     {
-                        var item = new UIMenuItem(data.ServerName);
-                        var gamemode = data.Gamemode == null ? "Unknown" : data.Gamemode;
+                        UIMenuItem item = new UIMenuItem(data.ServerName);
+                        string gamemode = data.Gamemode ?? "Unknown";
 
                         item.Text = data.ServerName;
                         item.Description = itemText;
@@ -1751,7 +1720,7 @@ namespace LiteClient
                         if (_serverBrowser.Items.Count > 0)
                             lastIndx = _serverBrowser.Index;
 
-                        var gMsg = msg;
+                        NetIncomingMessage gMsg = msg;
                         item.Activated += (sender, selectedItem) =>
                         {
                             if (IsOnServer())
@@ -1770,7 +1739,7 @@ namespace LiteClient
                                     Npcs.Clear();
                                 }
 
-                                while (IsOnServer()) Script.Yield();
+                                while (IsOnServer()) Yield();
                             }
 
                             if (data.PasswordProtected)
@@ -1789,7 +1758,7 @@ namespace LiteClient
 
                     foreach (var ourItem in matchedItems.Where(k => k != null))
                     {
-                        var gamemode = data.Gamemode == null ? "Unknown" : data.Gamemode;
+                        var gamemode = data.Gamemode ?? "Unknown";
 
                         ourItem.Text = data.ServerName;
                         ourItem.SetRightLabel(gamemode + " | " + data.PlayerCount + "/" + data.MaxPlayers);
@@ -1803,7 +1772,7 @@ namespace LiteClient
                         if (_serverBrowser.Items.Count > 0)
                             lastIndx = _serverBrowser.Index;
 
-                        var gMsg = msg;
+                        NetIncomingMessage gMsg = msg;
                         ourItem.Activated += (sender, selectedItem) =>
                         {
                             if (IsOnServer())
@@ -1949,38 +1918,37 @@ namespace LiteClient
 
             foreach (var arg in obj.Arguments)
             {
-                if (arg is IntArgument)
+                if (arg is IntArgument argument)
                 {
-                    list.Add(new InputArgument(((IntArgument)arg).Data));
+                    list.Add(new InputArgument(argument.Data));
                 }
-                else if (arg is UIntArgument)
+                else if (arg is UIntArgument argument1)
                 {
-                    list.Add(new InputArgument(((UIntArgument)arg).Data));
+                    list.Add(new InputArgument(argument1.Data));
                 }
-                else if (arg is StringArgument)
+                else if (arg is StringArgument argument2)
                 {
-                    list.Add(new InputArgument(((StringArgument)arg).Data));
+                    list.Add(new InputArgument(argument2.Data));
                 }
-                else if (arg is FloatArgument)
+                else if (arg is FloatArgument argument3)
                 {
-                    list.Add(new InputArgument(((FloatArgument)arg).Data));
+                    list.Add(new InputArgument(argument3.Data));
                 }
-                else if (arg is BooleanArgument)
+                else if (arg is BooleanArgument argument4)
                 {
-                    list.Add(new InputArgument(((BooleanArgument)arg).Data));
+                    list.Add(new InputArgument(argument4.Data));
                 }
                 else if (arg is LocalPlayerArgument)
                 {
                     list.Add(new InputArgument(Game.Player.Character.Handle));
                 }
-                else if (arg is OpponentPedHandleArgument)
+                else if (arg is OpponentPedHandleArgument argument5)
                 {
-                    var handle = ((OpponentPedHandleArgument)arg).Data;
+                    long handle = argument5.Data;
                     lock (Opponents) if (Opponents.ContainsKey(handle) && Opponents[handle].Character != null) list.Add(new InputArgument(Opponents[handle].Character.Handle));
                 }
-                else if (arg is Vector3Argument)
+                else if (arg is Vector3Argument tmp)
                 {
-                    var tmp = (Vector3Argument)arg;
                     list.Add(new InputArgument(tmp.X));
                     list.Add(new InputArgument(tmp.Y));
                     list.Add(new InputArgument(tmp.Z));
@@ -2000,39 +1968,37 @@ namespace LiteClient
                     var modelObj = obj.Arguments[(int)nativeType - 3];
                     int modelHash = 0;
 
-                    if (modelObj is UIntArgument)
-                    {
-                        modelHash = unchecked((int)((UIntArgument)modelObj).Data);
-                    }
-                    else if (modelObj is IntArgument)
-                    {
-                        modelHash = ((IntArgument)modelObj).Data;
-                    }
-                    var model = new Model(modelHash);
+                    if (modelObj is UIntArgument argument)
+                        modelHash = unchecked((int)argument.Data);
+                    else if (modelObj is IntArgument argument1)
+                        modelHash = argument1.Data;
+
+                    Model model = new Model(modelHash);
 
                     if (model.IsValid)
-                    {
                         model.Request(10000);
-                    }
                 }
 
-                var entId = Function.Call<int>((Hash)obj.Hash, list.ToArray());
-                lock (_entityCleanup) _entityCleanup.Add(entId);
+                int entId = Function.Call<int>((Hash)obj.Hash, list.ToArray());
+
+                lock (_entityCleanup)
+                    _entityCleanup.Add(entId);
+
                 if (obj.ReturnType is IntArgument)
-                {
                     SendNativeCallResponse(obj.Id, entId);
-                }
+
                 return;
             }
 
             if (nativeType == NativeType.ReturnsBlip)
             {
                 var blipId = Function.Call<int>((Hash)obj.Hash, list.ToArray());
-                lock (_blipCleanup) _blipCleanup.Add(blipId);
+                lock (_blipCleanup)
+                    _blipCleanup.Add(blipId);
+
                 if (obj.ReturnType is IntArgument)
-                {
                     SendNativeCallResponse(obj.Id, blipId);
-                }
+
                 return;
             }
 
@@ -2043,60 +2009,39 @@ namespace LiteClient
             else
             {
                 if (obj.ReturnType is IntArgument)
-                {
                     SendNativeCallResponse(obj.Id, Function.Call<int>((Hash)obj.Hash, list.ToArray()));
-                }
                 else if (obj.ReturnType is UIntArgument)
-                {
                     SendNativeCallResponse(obj.Id, Function.Call<uint>((Hash)obj.Hash, list.ToArray()));
-                }
                 else if (obj.ReturnType is StringArgument)
-                {
                     SendNativeCallResponse(obj.Id, Function.Call<string>((Hash)obj.Hash, list.ToArray()));
-                }
                 else if (obj.ReturnType is FloatArgument)
-                {
                     SendNativeCallResponse(obj.Id, Function.Call<float>((Hash)obj.Hash, list.ToArray()));
-                }
                 else if (obj.ReturnType is BooleanArgument)
-                {
                     SendNativeCallResponse(obj.Id, Function.Call<bool>((Hash)obj.Hash, list.ToArray()));
-                }
                 else if (obj.ReturnType is Vector3Argument)
-                {
                     SendNativeCallResponse(obj.Id, Function.Call<Vector3>((Hash)obj.Hash, list.ToArray()));
-                }
             }
         }
 
         public void SendNativeCallResponse(string id, object response)
         {
-            var obj = new NativeResponse();
-            obj.Id = id;
+            NativeResponse obj = new NativeResponse
+            {
+                Id = id
+            };
 
             if (response is int)
-            {
                 obj.Response = new IntArgument() { Data = ((int)response) };
-            }
             else if (response is uint)
-            {
                 obj.Response = new UIntArgument() { Data = ((uint)response) };
-            }
             else if (response is string)
-            {
                 obj.Response = new StringArgument() { Data = ((string)response) };
-            }
             else if (response is float)
-            {
                 obj.Response = new FloatArgument() { Data = ((float)response) };
-            }
             else if (response is bool)
-            {
                 obj.Response = new BooleanArgument() { Data = ((bool)response) };
-            }
-            else if (response is Vector3)
+            else if (response is Vector3 tmp)
             {
-                var tmp = (Vector3)response;
                 obj.Response = new Vector3Argument()
                 {
                     X = tmp.X,
@@ -2105,8 +2050,8 @@ namespace LiteClient
                 };
             }
 
-            var msg = _client.CreateMessage();
-            var bin = SerializeBinary(obj);
+            NetOutgoingMessage msg = _client.CreateMessage();
+            byte[] bin = SerializeBinary(obj);
             msg.Write((int)PacketType.NativeResponse);
             msg.Write(bin.Length);
             msg.Write(bin);
@@ -2153,73 +2098,69 @@ namespace LiteClient
         public static int GetPedSpeed(Vector3 firstVector, Vector3 secondVector)
         {
             float speed = (firstVector - secondVector).Length();
-            if (speed < 0.02f)
+
+            if (speed >= 0.02f)
             {
-                return 0;
-            }
-            else if (speed >= 0.02f && speed < 0.05f)
-            {
-                return 1;
-            }
-            else if (speed >= 0.05f && speed < 0.12f)
-            {
+                if (speed >= 0.12f)
+                    return 3;
+                else if (speed < 0.05f)
+                    return 1;
+
                 return 2;
             }
-            else if (speed >= 0.12f)
-                return 3;
+
             return 0;
         }
 
         public static bool WorldToScreenRel(Vector3 worldCoords, out Vector2 screenCoords)
         {
-            var num1 = new OutputArgument();
-            var num2 = new OutputArgument();
+            OutputArgument num1 = new OutputArgument(),
+                num2 = new OutputArgument();
+
+            screenCoords = new Vector2();
 
             if (!Function.Call<bool>(Hash._WORLD3D_TO_SCREEN2D, worldCoords.X, worldCoords.Y, worldCoords.Z, num1, num2))
-            {
-                screenCoords = new Vector2();
                 return false;
-            }
-            screenCoords = new Vector2((num1.GetResult<float>() - 0.5f) * 2, (num2.GetResult<float>() - 0.5f) * 2);
+
+            screenCoords.X = (num1.GetResult<float>() - 0.5f) * 2;
+            screenCoords.Y = (num2.GetResult<float>() - 0.5f) * 2;
             return true;
         }
 
         public static Vector3 ScreenRelToWorld(Vector3 camPos, Vector3 camRot, Vector2 coord)
         {
-            var camForward = RotationToDirection(camRot);
-            var rotUp = camRot + new Vector3(10, 0, 0);
-            var rotDown = camRot + new Vector3(-10, 0, 0);
-            var rotLeft = camRot + new Vector3(0, 0, -10);
-            var rotRight = camRot + new Vector3(0, 0, 10);
+            Vector3 camForward = RotationToDirection(camRot),
+                rotUp = camRot + new Vector3(10, 0, 0),
+                rotDown = camRot + new Vector3(-10, 0, 0),
+                rotLeft = camRot + new Vector3(0, 0, -10),
+                rotRight = camRot + new Vector3(0, 0, 10),
+                camRight = RotationToDirection(rotRight) - RotationToDirection(rotLeft),
+                camUp = RotationToDirection(rotUp) - RotationToDirection(rotDown);
 
-            var camRight = RotationToDirection(rotRight) - RotationToDirection(rotLeft);
-            var camUp = RotationToDirection(rotUp) - RotationToDirection(rotDown);
+            double rollRad = -DegToRad(camRot.Y);
 
-            var rollRad = -DegToRad(camRot.Y);
+            Vector3 camRightRoll = camRight * (float)Math.Cos(rollRad) - camUp * (float)Math.Sin(rollRad),
+                camUpRoll = camRight * (float)Math.Sin(rollRad) + camUp * (float)Math.Cos(rollRad);
 
-            var camRightRoll = camRight * (float)Math.Cos(rollRad) - camUp * (float)Math.Sin(rollRad);
-            var camUpRoll = camRight * (float)Math.Sin(rollRad) + camUp * (float)Math.Cos(rollRad);
-
-            var point3D = camPos + camForward * 10.0f + camRightRoll + camUpRoll;
-            Vector2 point2D;
-            if (!WorldToScreenRel(point3D, out point2D)) return camPos + camForward * 10.0f;
-            var point3DZero = camPos + camForward * 10.0f;
-            Vector2 point2DZero;
-            if (!WorldToScreenRel(point3DZero, out point2DZero)) return camPos + camForward * 10.0f;
+            if (!WorldToScreenRel(camPos + camForward * 10.0f + camRightRoll + camUpRoll, out Vector2 point2D)) return camPos + camForward * 10.0f;
+            if (!WorldToScreenRel(camPos + camForward * 10.0f, out Vector2 point2DZero)) return camPos + camForward * 10.0f;
 
             const double eps = 0.001;
-            if (Math.Abs(point2D.X - point2DZero.X) < eps || Math.Abs(point2D.Y - point2DZero.Y) < eps) return camPos + camForward * 10.0f;
-            var scaleX = (coord.X - point2DZero.X) / (point2D.X - point2DZero.X);
-            var scaleY = (coord.Y - point2DZero.Y) / (point2D.Y - point2DZero.Y);
-            var point3Dret = camPos + camForward * 10.0f + camRightRoll * scaleX + camUpRoll * scaleY;
+            if (Math.Abs(point2D.X - point2DZero.X) < eps || Math.Abs(point2D.Y - point2DZero.Y) < eps)
+                return camPos + camForward * 10.0f;
+
+            float scaleX = (coord.X - point2DZero.X) / (point2D.X - point2DZero.X),
+                scaleY = (coord.Y - point2DZero.Y) / (point2D.Y - point2DZero.Y);
+            Vector3 point3Dret = camPos + camForward * 10.0f + camRightRoll * scaleX + camUpRoll * scaleY;
             return point3Dret;
         }
 
         public static Vector3 RotationToDirection(Vector3 rotation)
         {
-            var z = DegToRad(rotation.Z);
-            var x = DegToRad(rotation.X);
-            var num = Math.Abs(Math.Cos(x));
+            double z = DegToRad(rotation.Z),
+                x = DegToRad(rotation.X),
+                num = Math.Abs(Math.Cos(x));
+
             return new Vector3
             {
                 X = (float)(-Math.Sin(z) * num),
@@ -2232,9 +2173,9 @@ namespace LiteClient
         {
             direction.Normalize();
 
-            var x = Math.Atan2(direction.Z, direction.Y);
-            var y = 0;
-            var z = -Math.Atan2(direction.X, direction.Y);
+            double x = Math.Atan2(direction.Z, direction.Y);
+            int y = 0;
+            double z = -Math.Atan2(direction.X, direction.Y);
 
             return new Vector3
             {
@@ -2256,41 +2197,36 @@ namespace LiteClient
 
         public static double BoundRotationDeg(double angleDeg)
         {
-            var twoPi = (int)(angleDeg / 360);
-            var res = angleDeg - twoPi * 360;
-            if (res < 0) res += 360;
-            return res;
+            int twoPi = (int)(angleDeg / 360);
+            double res = angleDeg - twoPi * 360;
+
+            return res < 0 ? res += 360 : res;
         }
 
         public static Vector3 RaycastEverything(Vector2 screenCoord)
         {
-            var camPos = GameplayCamera.Position;
-            var camRot = GameplayCamera.Rotation;
-            const float raycastToDist = 100.0f;
-            const float raycastFromDist = 1f;
+            Vector3 camPos = GameplayCamera.Position,
+                camRot = GameplayCamera.Rotation;
 
-            var target3D = ScreenRelToWorld(camPos, camRot, screenCoord);
-            var source3D = camPos;
+            const float raycastToDist = 100.0f,
+                raycastFromDist = 1f;
+
+            Vector3 target3D = ScreenRelToWorld(camPos, camRot, screenCoord),
+                source3D = camPos;
 
             Entity ignoreEntity = Game.Player.Character;
             if (Game.Player.Character.IsInVehicle())
-            {
                 ignoreEntity = Game.Player.Character.CurrentVehicle;
-            }
 
-            var dir = (target3D - source3D);
+            Vector3 dir = (target3D - source3D);
             dir.Normalize();
-            var raycastResults = World.Raycast(source3D + dir * raycastFromDist,
+
+            RaycastResult raycastResults = World.Raycast(source3D + dir * raycastFromDist,
                 source3D + dir * raycastToDist,
-                (IntersectOptions)(1 | 16 | 256 | 2 | 4 | 8)// | peds + vehicles
+                (IntersectOptions)(1 | 16 | 256 | 2 | 4 | 8) // | peds + vehicles
                 , ignoreEntity);
 
-            if (raycastResults.DitHitAnything)
-            {
-                return raycastResults.HitCoords;
-            }
-
-            return camPos + dir * raycastToDist;
+            return raycastResults.DitHitAnything ? raycastResults.HitCoords : camPos + dir * raycastToDist;
         }
 
         public static object DeserializeBinary<T>(byte[] data)
@@ -2312,7 +2248,7 @@ namespace LiteClient
 
         public static byte[] SerializeBinary(object data)
         {
-            using (var stream = new MemoryStream())
+            using (MemoryStream stream = new MemoryStream())
             {
                 stream.SetLength(0);
                 Serializer.Serialize(stream, data);
@@ -2322,14 +2258,10 @@ namespace LiteClient
 
         public int GetOpenUdpPort()
         {
-            var startingAtPort = 5000;
-            var maxNumberOfPortsToCheck = 500;
-            var range = Enumerable.Range(startingAtPort, maxNumberOfPortsToCheck);
-            var portsInUse =
-                from p in range
-                join used in System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners()
-            on p equals used.Port
-                select p;
+            int startingAtPort = 5000,
+                maxNumberOfPortsToCheck = 500;
+            IEnumerable<int> range = Enumerable.Range(startingAtPort, maxNumberOfPortsToCheck),
+                portsInUse = from p in range join used in System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners() on p equals used.Port select p;
 
             return range.Except(portsInUse).FirstOrDefault();
         }
@@ -2337,6 +2269,6 @@ namespace LiteClient
 
     public class MasterServerList
     {
-        public List<string> list { get; set; }
+        public List<string> List { get; set; }
     }
 }

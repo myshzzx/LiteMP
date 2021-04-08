@@ -14,36 +14,20 @@ namespace LiteClient
     {
         public long Host;
         public Ped Character;
-        public Vector3 Position;
-        public Vector3 _rotation;
-        public bool IsInVehicle;
-        public bool IsJumping;
-        public int ModelHash;
-        public int CurrentWeapon;
-        public bool IsShooting;
-        public bool IsAiming;
-        public Vector3 AimCoords;
+        public Vector3 Position, _rotation, AimCoords;
+        public int ModelHash, CurrentWeapon;
+        public bool IsShooting, IsAiming, IsJumping, IsInVehicle;
         public float Latency;
-        public bool IsHornPressed;
-        public bool LightsOn;
-        public bool highbeamsOn;
+        public bool IsHornPressed, LightsOn, highbeamsOn;
         public Vehicle MainVehicle { get; set; }
 
-        public int VehicleSeat;
-        public int PedHealth;
+        public int VehicleSeat, PedHealth;
 
-        public float VehicleHealth;
-        public int VehicleHash;
+        public float VehicleHealth, Steering, VehicleRPM;
+        public int VehicleHash, VehiclePrimaryColor, VehicleSecondaryColor;
         public Vector3 _vehicleRotation;
-        public int VehiclePrimaryColor;
-        public int VehicleSecondaryColor;
         public string Name;
-        public bool Siren;
-        public bool IsInBurnout;
-        private bool _lastBurnout;
-        public float Steering;
-        public float VehicleRPM;
-        public bool IsEngineRunning;
+        public bool Siren, IsInBurnout, IsEngineRunning;
         public string Plate;
         public int RadioStation;
 
@@ -123,15 +107,10 @@ namespace LiteClient
             }
         }
 
-        private Vector3 _lastVehVel;
         public Vector3 VehicleVelocity
         {
             get { return _vehicleVelocity; }
-            set
-            {
-                _lastVehVel = _vehicleVelocity;
-                _vehicleVelocity = value;
-            }
+            set { _vehicleVelocity = value; }
         }
 
         private Vector3? _lastVehicleRotation;
@@ -145,26 +124,19 @@ namespace LiteClient
             }
         }
 
-        private Vector3 _lastRotation;
         public Vector3 Rotation
         {
             get { return _rotation; }
-            set
-            {
-                _lastRotation = _rotation;
-                _rotation = value;
-            }
+            set { _rotation = value; }
         }
 
         private bool _lastVehicle;
         private uint _switch;
-        private bool _lastAiming;
         private float _lastSpeed;
         private bool _lastShooting;
         private bool _lastJumping;
         private bool _blip;
         private bool _justEnteredVeh;
-        private DateTime _lastHornPress = DateTime.Now;
         private int _relGroup;
         private DateTime _enterVehicleStarted;
         private Vector3 _vehiclePosition;
@@ -434,43 +406,29 @@ namespace LiteClient
                             _lastHorn = true;
                             MainVehicle.SoundHorn(99999);
                         }
-
-                        if (!IsHornPressed && _lastHorn)
+                        else if (!IsHornPressed && _lastHorn)
                         {
                             _lastHorn = false;
                             MainVehicle.SoundHorn(1);
                         }
 
-                        if (IsInBurnout && !_lastBurnout)
+                        if (IsInBurnout)
                         {
                             Function.Call(Hash.SET_VEHICLE_BURNOUT, MainVehicle, true);
                             Function.Call(Hash.TASK_VEHICLE_TEMP_ACTION, Character, MainVehicle, 23, 120000); // 30 - burnout
                         }
-                        else if (!IsInBurnout && _lastBurnout)
+                        else
                         {
                             Function.Call(Hash.SET_VEHICLE_BURNOUT, MainVehicle, false);
                             Character.Task.ClearAll();
                         }
 
-                        _lastBurnout = IsInBurnout;
 
                         Function.Call(Hash.SET_VEHICLE_BRAKE_LIGHTS, MainVehicle, Speed > 0.2 && _lastSpeed > Speed);
 
-                        if (MainVehicle.LightsOn != LightsOn)
-                        {
-                            MainVehicle.LightsOn = LightsOn;
-                        }
-
-                        if (MainVehicle.HighBeamsOn != highbeamsOn)
-                        {
-                            MainVehicle.HighBeamsOn = highbeamsOn;
-                        }
-
-                        if (MainVehicle.SirenActive && !Siren)
-                            MainVehicle.SirenActive = Siren;
-                        else if (!MainVehicle.SirenActive && Siren)
-                            MainVehicle.SirenActive = Siren;
-
+                        MainVehicle.LightsOn = LightsOn;
+                        MainVehicle.HighBeamsOn = highbeamsOn;
+                        MainVehicle.SirenActive = Siren;
                         MainVehicle.CurrentRPM = VehicleRPM;
                         MainVehicle.SteeringAngle = (float)(Math.PI / 180) * Steering;
 
@@ -626,7 +584,6 @@ namespace LiteClient
                     }
                     _lastJumping = IsJumping;
                     _lastShooting = IsShooting;
-                    _lastAiming = IsAiming;
                 }
                 _lastVehicle = IsInVehicle;
             }
@@ -637,9 +594,8 @@ namespace LiteClient
             }
         }
 
-        struct interpolation
+        struct Interpolation
         {
-            public Vector3 vecStart;
             public Vector3 vecTarget;
             public Vector3 vecError;
             public int StartTime;
@@ -647,11 +603,11 @@ namespace LiteClient
             public float LastAlpha;
         }
 
-        private interpolation currentInterop = new interpolation();
+        private Interpolation currentInterop = new Interpolation();
 
         public void StartInterpolation()
         {
-            currentInterop = new interpolation();
+            currentInterop = new Interpolation();
 
             currentInterop.vecTarget = VehiclePosition;
             currentInterop.vecError = VehiclePosition - _lastVehiclePos;
@@ -682,16 +638,19 @@ namespace LiteClient
                 Character.Model.MarkAsNoLongerNeeded();
                 Character.Delete();
             }
+
             if (_mainBlip != null)
             {
                 _mainBlip.Remove();
                 _mainBlip = null;
             }
+
             if (MainVehicle != null && Util.IsVehicleEmpty(MainVehicle))
             {
                 MainVehicle.Model.MarkAsNoLongerNeeded();
                 MainVehicle.Delete();
             }
+
             if (_parachuteProp != null)
             {
                 _parachuteProp.Delete();
