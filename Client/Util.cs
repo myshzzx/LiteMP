@@ -14,7 +14,7 @@ namespace LiteClient
         public static T Clamp<T>(T min, T value, T max) where T : IComparable
         {
             if (value.CompareTo(min) < 0) return min;
-            if (value.CompareTo(max) > 0) return max;
+            else if (value.CompareTo(max) > 0) return max;
 
             return value;
         }
@@ -54,12 +54,14 @@ namespace LiteClient
         public static bool IsVehicleEmpty(Vehicle veh)
         {
             if (veh == null) return true;
-            if (!veh.IsSeatFree(VehicleSeat.Driver)) return false;
+            else if (!veh.IsSeatFree(VehicleSeat.Driver)) return false;
+
             for (int i = 0; i < veh.PassengerSeats; i++)
             {
                 if (!veh.IsSeatFree((VehicleSeat)i))
                     return false;
             }
+
             return true;
         }
 
@@ -75,13 +77,12 @@ namespace LiteClient
 
         public static float LinearFloatLerp(float start, float end, int currentTime, int duration)
         {
-            float change = end - start;
-            return change * currentTime / duration + start;
+            return (end - start) * currentTime / duration + start;
         }
 
         public static Dictionary<int, int> GetVehicleMods(Vehicle veh)
         {
-            var dict = new Dictionary<int, int>();
+            Dictionary<int, int> dict = new Dictionary<int, int>();
             for (int i = 0; i < 50; i++)
             {
                 dict.Add(i, veh.GetMod((VehicleMod)i));
@@ -91,10 +92,10 @@ namespace LiteClient
 
         public static Dictionary<int, int> GetPlayerProps(Ped ped)
         {
-            var props = new Dictionary<int, int>();
+            Dictionary<int, int> props = new Dictionary<int, int>();
             for (int i = 0; i < 15; i++)
             {
-                var mod = Function.Call<int>(Hash.GET_PED_DRAWABLE_VARIATION, ped.Handle, i);
+                int mod = Function.Call<int>(Hash.GET_PED_DRAWABLE_VARIATION, ped.Handle, i);
                 if (mod == -1) continue;
                 props.Add(i, mod);
             }
@@ -181,12 +182,9 @@ namespace LiteClient
 
         public static Vector3 GetLastWeaponImpact(Ped ped)
         {
-            var coord = new OutputArgument();
-            if (!Function.Call<bool>(Hash.GET_PED_LAST_WEAPON_IMPACT_COORD, ped.Handle, coord))
-            {
-                return new Vector3();
-            }
-            return coord.GetResult<Vector3>();
+            OutputArgument coord = new OutputArgument();
+
+            return !Function.Call<bool>(Hash.GET_PED_LAST_WEAPON_IMPACT_COORD, ped.Handle, coord) ? new Vector3() : coord.GetResult<Vector3>();
         }
 
         public static Quaternion LerpQuaternion(Quaternion start, Quaternion end, float speed)
@@ -246,20 +244,24 @@ namespace LiteClient
 
             vect = vect.ToRadians();
 
-            float rollOver2 = vect.Z * 0.5f;
-            float sinRollOver2 = (float)Math.Sin((double)rollOver2);
-            float cosRollOver2 = (float)Math.Cos((double)rollOver2);
-            float pitchOver2 = vect.Y * 0.5f;
-            float sinPitchOver2 = (float)Math.Sin((double)pitchOver2);
-            float cosPitchOver2 = (float)Math.Cos((double)pitchOver2);
-            float yawOver2 = vect.X * 0.5f; // pitch
-            float sinYawOver2 = (float)Math.Sin((double)yawOver2);
-            float cosYawOver2 = (float)Math.Cos((double)yawOver2);
-            Quaternion result = new Quaternion();
-            result.X = cosYawOver2 * cosPitchOver2 * cosRollOver2 + sinYawOver2 * sinPitchOver2 * sinRollOver2;
-            result.Y = cosYawOver2 * cosPitchOver2 * sinRollOver2 - sinYawOver2 * sinPitchOver2 * cosRollOver2;
-            result.Z = cosYawOver2 * sinPitchOver2 * cosRollOver2 + sinYawOver2 * cosPitchOver2 * sinRollOver2;
-            result.W = sinYawOver2 * cosPitchOver2 * cosRollOver2 - cosYawOver2 * sinPitchOver2 * sinRollOver2;
+            float rollOver2 = vect.Z * 0.5f,
+                sinRollOver2 = (float)Math.Sin(rollOver2),
+                cosRollOver2 = (float)Math.Cos(rollOver2),
+                pitchOver2 = vect.Y * 0.5f,
+                sinPitchOver2 = (float)Math.Sin(pitchOver2),
+                cosPitchOver2 = (float)Math.Cos(pitchOver2),
+                yawOver2 = vect.X * 0.5f, // pitch
+                sinYawOver2 = (float)Math.Sin(yawOver2),
+                cosYawOver2 = (float)Math.Cos(yawOver2);
+
+            Quaternion result = new Quaternion
+            {
+                X = cosYawOver2 * cosPitchOver2 * cosRollOver2 + sinYawOver2 * sinPitchOver2 * sinRollOver2,
+                Y = cosYawOver2 * cosPitchOver2 * sinRollOver2 - sinYawOver2 * sinPitchOver2 * cosRollOver2,
+                Z = cosYawOver2 * sinPitchOver2 * cosRollOver2 + sinYawOver2 * cosPitchOver2 * sinRollOver2,
+                W = sinYawOver2 * cosPitchOver2 * cosRollOver2 - cosYawOver2 * sinPitchOver2 * sinRollOver2
+            };
+
             return result;
         }
 

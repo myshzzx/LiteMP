@@ -11,14 +11,16 @@ namespace LiteClient
     {
         public static string Location { get { return AppDomain.CurrentDomain.BaseDirectory; } }
 
-        public static void Main(string[] args)
+        public static void Main()
         {
             Console.WriteLine("Starting...");
 
             SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
 
-            var _config = new NetPeerConfiguration("LITEMPNET");
-            _config.Port = new Random().Next(1000, 9999);
+            var _config = new NetPeerConfiguration("LITEMPNET")
+            {
+                Port = new Random().Next(1000, 9999)
+            };
 
             var _client = new NetClient(_config);
             _client.Start();
@@ -37,10 +39,10 @@ namespace LiteClient
         {
             Console.WriteLine("Received message.");
 
-            var peer = (NetPeer)sender;
-            var msg = peer.ReadMessage();
+            NetPeer peer = (NetPeer)sender;
+            NetIncomingMessage msg = peer.ReadMessage();
 
-            var type = (PacketType)msg.ReadInt32();
+            PacketType type = (PacketType)msg.ReadInt32();
 
 
             Console.WriteLine("Data is " + type);
@@ -49,15 +51,15 @@ namespace LiteClient
             {
                 case PacketType.ChatData:
                     {
-                        var len = msg.ReadInt32();
-                        var data = DeserializeBinary<ChatData>(msg.ReadBytes(len)) as ChatData;
-                        if (data != null) Console.WriteLine("Chat: " + data.Message);
+                        int len = msg.ReadInt32();
+                        if (DeserializeBinary<ChatData>(msg.ReadBytes(len)) is ChatData data)
+                            Console.WriteLine("Chat: " + data.Message);
                     }
                     break;
                 case PacketType.VehiclePositionData:
                     {
                         var len = msg.ReadInt32();
-                        var data = DeserializeBinary<VehicleData>(msg.ReadBytes(len)) as VehicleData;
+                        var data = DeserializeBinary<VehicleData>(msg.ReadBytes(len)) as VehicleData; // Unnused
                         Console.WriteLine("Updated Vehicle Data");
                     }
                     break;

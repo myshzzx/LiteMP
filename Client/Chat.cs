@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using GTA;
 using GTA.Native;
@@ -29,16 +30,11 @@ namespace LiteClient
             set
             {
                 if (value && !_isFocused)
-                {
                     _mainScaleform.CallFunction("SET_FOCUS", 2, 2, "ALL");
-                }
                 else if (!value && _isFocused)
-                {
                     _mainScaleform.CallFunction("SET_FOCUS", 1, 2, "ALL");
-                }
 
                 _isFocused = value;
-
             }
         }
 
@@ -88,6 +84,38 @@ namespace LiteClient
             if ((key == Keys.ShiftKey && _lastKey == Keys.Menu) || (key == Keys.Menu && _lastKey == Keys.ShiftKey))
                 ActivateKeyboardLayout(1, 0);
 
+            string str = null;
+
+            // Paste from clipboard (CTRL + V)
+            if (key == Keys.V && Game.IsKeyPressed(Keys.ControlKey))
+            {
+                Thread staThread = new Thread(
+                    delegate ()
+                    {
+                        try
+                        {
+                            str = Clipboard.GetText(TextDataFormat.Text);
+                        }
+                        catch
+                        {
+                            UI.Notify("~r~Clipboard could not be pasted!");
+                            return;
+                        }
+                    }
+                );
+                staThread.SetApartmentState(ApartmentState.STA);
+                staThread.Start();
+                staThread.Join();
+
+                if (!string.IsNullOrWhiteSpace(str))
+                {
+                    CurrentInput += str;
+                    _mainScaleform.CallFunction("ADD_TEXT", str);
+                }
+
+                return;
+            }
+
             _lastKey = key;
 
             if (key == Keys.Escape)
@@ -125,7 +153,7 @@ namespace LiteClient
                 return;
             }
 
-            string str = keyChar;
+            str = keyChar;
 
             CurrentInput += str;
             _mainScaleform.CallFunction("ADD_TEXT", str);
