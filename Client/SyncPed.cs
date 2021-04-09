@@ -294,7 +294,7 @@ namespace LiteClient
                         MainVehicle.PrimaryColor = (VehicleColor)VehiclePrimaryColor;
                         MainVehicle.SecondaryColor = (VehicleColor)VehicleSecondaryColor;
                         MainVehicle.IsInvincible = true;
-                        Character.Task.WarpIntoVehicle(MainVehicle, (VehicleSeat)VehicleSeat);
+                        Character.SetIntoVehicle(MainVehicle, (VehicleSeat)VehicleSeat);
                     }
 
                     _lastVehicle = true;
@@ -470,6 +470,9 @@ namespace LiteClient
                     if (Character.Weapons.Current.Hash != (WeaponHash)CurrentWeapon)
                         Character.Weapons.Select(Character.Weapons.Give((WeaponHash)CurrentWeapon, 9999, true, true));
 
+                    if (!_lastJumping && IsJumping)
+                        Character.Task.Jump();
+
                     if (IsParachuteOpen)
                     {
                         if (_parachuteProp == null)
@@ -489,7 +492,6 @@ namespace LiteClient
                     }
                     else
                     {
-                        Vector3 dest = Position;
                         Character.FreezePosition = false;
 
                         if (_parachuteProp != null)
@@ -502,60 +504,69 @@ namespace LiteClient
                         Function.Call(Hash.SET_PED_SHOOT_RATE, Character.Handle, 100);
                         Function.Call(Hash.SET_PED_INFINITE_AMMO_CLIP, Character.Handle, true);
 
+                        // We have to revise that at some point
                         if (IsReloading)
                         {
                             if (!Character.IsReloading)
                                 Character.Task.ReloadWeapon();
-                        }
-                        else
-                        {
-                            const int threshold = 50;
-                            if (IsAiming && !IsShooting && !Character.IsInRangeOf(Position, 0.5f) && _switch % threshold == 0)
-                            {
-                                Function.Call(Hash.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD, Character.Handle, dest.X, dest.Y,
-                                    dest.Z, AimCoords.X, AimCoords.Y, AimCoords.Z, 2f, 0, 0x3F000000, 0x40800000, 1, 512, 0,
-                                    (uint)FiringPattern.FullAuto);
-                            }
-                            else if (IsAiming && !IsShooting && Character.IsInRangeOf(Position, 0.5f))
-                            {
-                                Character.Task.AimAt(AimCoords, 100);
-                            }
 
-                            if (!Character.IsInRangeOf(Position, 0.5f) && ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold * 2) == 0)))
+                            if (!Character.IsInRangeOf(Position, 0.5f))
                             {
-                                Function.Call(Hash.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD, Character.Handle, dest.X, dest.Y,
-                                    dest.Z, AimCoords.X, AimCoords.Y, AimCoords.Z, 2f, 1, 0x3F000000, 0x40800000, 1, 0, 0,
-                                    (uint)FiringPattern.FullAuto);
-                            }
-                            else if ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold / 2) == 0))
-                            {
-                                Function.Call(Hash.TASK_SHOOT_AT_COORD, Character.Handle, AimCoords.X, AimCoords.Y, AimCoords.Z, 1500, (uint)FiringPattern.FullAuto);
-                            }
-                        }
-
-                        // We have to revise that at some point
-                        if (IsJumping)
-                        {
-                            if (!_lastJumping)
-                                Character.Task.Jump();
-                        }
-                        else
-                        {
-                            if (((IsReloading || IsAiming || IsShooting) && Character.Position != Position) || !Character.IsInRangeOf(Position, 5f))
-                            {
-                                Character.Position = dest - new Vector3(0, 0, 1f);
+                                Character.Position = Position - new Vector3(0, 0, 1f);
                                 Character.Quaternion = _rotation.ToQuaternion();
                             }
-                            else if (!Character.IsInRangeOf(Position, 0.5f))
+                        } //
+                        else
+                        {
+                            if (Character.Weapons.Current.Hash != WeaponHash.Unarmed)
                             {
-                                Character.Task.RunTo(Position, true, 500);
+                                const int threshold = 50;
+
+                                if (IsAiming && !IsShooting)
+                                {
+                                    if (!Character.IsInRangeOf(Position, 0.5f) && _switch % threshold == 0)
+                                    {
+                                        Function.Call(Hash.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD, Character.Handle, Position.X, Position.Y,
+                                        Position.Z, AimCoords.X, AimCoords.Y, AimCoords.Z, 2f, 0, 0x3F000000, 0x40800000, 1, 512, 0,
+                                        (uint)FiringPattern.FullAuto);
+                                    }
+                                    else if (Character.IsInRangeOf(Position, 0.5f))
+                                    {
+                                        Character.Task.AimAt(AimCoords, -1);
+                                    }
+                                }
+
+                                if (!Character.IsInRangeOf(Position, 0.5f) && ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold * 2) == 0)))
+                                {
+                                    Function.Call(Hash.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD, Character.Handle, Position.X, Position.Y,
+                                        Position.Z, AimCoords.X, AimCoords.Y, AimCoords.Z, 2f, 1, 0x3F000000, 0x40800000, 1, 0, 0,
+                                        (uint)FiringPattern.FullAuto);
+                                }
+                                else if ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold / 2) == 0))
+                                {
+                                    Function.Call(Hash.TASK_SHOOT_AT_COORD, Character.Handle, AimCoords.X, AimCoords.Y, AimCoords.Z, 1500, (uint)FiringPattern.FullAuto);
+                                }
+                            }
+
+                            if ((Character.Weapons.Current.Hash == WeaponHash.Unarmed || !IsAiming && !IsShooting) && !IsJumping)
+                            {
+                                if (!Character.IsInRangeOf(Position, 5f))
+                                {
+                                    Character.Position = Position - new Vector3(0, 0, 1f);
+                                    Character.Quaternion = _rotation.ToQuaternion();
+                                }
+                                else if (!Character.IsInRangeOf(Position, 0.5f))
+                                {
+                                    Character.Task.RunTo(Position, true, 500);
+                                }
                             }
                         }
-                        //
                     }
+
                     _lastJumping = IsJumping;
                     _lastShooting = IsShooting;
                 }
+
                 _lastVehicle = IsInVehicle;
             }
             catch (Exception ex)

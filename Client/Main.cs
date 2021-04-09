@@ -867,7 +867,7 @@ namespace LiteClient
         }
 
         private static int _lastDataSend;
-        private static int _tickRate = 60;
+        private static readonly int _tickRate = 60;
         public static void SendPlayerData()
         {
             if (Environment.TickCount - _lastDataSend < 1000 / _tickRate) return;
@@ -885,26 +885,28 @@ namespace LiteClient
                     lights = veh.LightsOn,
                     engine = veh.EngineRunning;
 
-                VehicleData obj = new VehicleData();
-                obj.Position = veh.Position.ToLVector();
-                obj.Quaternion = veh.Rotation.ToLVector();
-                obj.Velocity = veh.Velocity.ToLVector();
-                obj.PedModelHash = player.Model.Hash;
-                obj.VehicleModelHash = veh.Model.Hash;
-                obj.PrimaryColor = (int)veh.PrimaryColor;
-                obj.SecondaryColor = (int)veh.SecondaryColor;
-                obj.PlayerHealth = (int)(100 * ((player.Health < 0 ? 0 : player.Health) / (float)player.MaxHealth));
-                obj.VehicleHealth = veh.EngineHealth;
-                obj.VehicleSeat = Util.GetPedSeat(player);
-                obj.VehicleMods = CheckPlayerVehicleMods();
-                obj.Speed = veh.Speed;
-                obj.RPM = veh.CurrentRPM;
-                obj.Steering = veh.SteeringAngle;
+                VehicleData obj = new VehicleData
+                {
+                    Position = veh.Position.ToLVector(),
+                    Quaternion = veh.Rotation.ToLVector(),
+                    Velocity = veh.Velocity.ToLVector(),
+                    PedModelHash = player.Model.Hash,
+                    VehicleModelHash = veh.Model.Hash,
+                    PrimaryColor = (int)veh.PrimaryColor,
+                    SecondaryColor = (int)veh.SecondaryColor,
+                    PlayerHealth = (int)(100 * ((player.Health < 0 ? 0 : player.Health) / (float)player.MaxHealth)),
+                    VehicleHealth = veh.EngineHealth,
+                    VehicleSeat = Util.GetPedSeat(player),
+                    VehicleMods = CheckPlayerVehicleMods(),
+                    Speed = veh.Speed,
+                    RPM = veh.CurrentRPM,
+                    Steering = veh.SteeringAngle,
 
-                obj.RadioStation = (int)Game.RadioStation;
-                obj.Plate = veh.NumberPlate;
+                    RadioStation = (int)Game.RadioStation,
+                    Plate = veh.NumberPlate,
 
-                obj.Flag = 0;
+                    Flag = 0
+                };
 
                 if (horn)
                     obj.Flag |= (byte)VehicleDataFlags.PressingHorn;
@@ -943,22 +945,24 @@ namespace LiteClient
             else
             {
                 bool aiming = Game.IsControlPressed(0, GTA.Control.Aim),
-                    shooting = player.IsShooting,
+                    shooting = player.IsShooting && player.Weapons.Current?.AmmoInClip != 0,
                     jumping = player.IsJumping;
 
                 Vector3 aimCoord = new Vector3();
                 if (aiming || shooting)
                     aimCoord = ScreenRelToWorld(GameplayCamera.Position, GameplayCamera.Rotation, new Vector2(0, 0));
 
-                PedData obj = new PedData();
-                obj.AimCoords = aimCoord.ToLVector();
-                obj.Position = player.Position.ToLVector();
-                obj.Quaternion = player.Rotation.ToLVector();
-                obj.PedModelHash = player.Model.Hash;
-                obj.WeaponHash = (int)player.Weapons.Current.Hash;
-                obj.PlayerHealth = (int)(100 * ((player.Health < 0 ? 0 : player.Health) / (float)player.MaxHealth));
+                PedData obj = new PedData
+                {
+                    AimCoords = aimCoord.ToLVector(),
+                    Position = player.Position.ToLVector(),
+                    Quaternion = player.Rotation.ToLVector(),
+                    PedModelHash = player.Model.Hash,
+                    WeaponHash = (int)player.Weapons.Current.Hash,
+                    PlayerHealth = (int)(100 * ((player.Health < 0 ? 0 : player.Health) / (float)player.MaxHealth)),
 
-                obj.Flag = 0;
+                    Flag = 0
+                };
 
                 if (aiming)
                     obj.Flag |= (byte)PedDataFlags.IsAiming;
@@ -1008,23 +1012,25 @@ namespace LiteClient
                     lights = veh.LightsOn,
                     engine = veh.EngineRunning;
 
-                VehicleData obj = new VehicleData();
-                obj.Position = veh.Position.ToLVector();
-                obj.Quaternion = veh.Rotation.ToLVector();
-                obj.Velocity = veh.Velocity.ToLVector();
-                obj.PedModelHash = ped.Model.Hash;
-                obj.VehicleModelHash = veh.Model.Hash;
-                obj.PrimaryColor = (int)veh.PrimaryColor;
-                obj.SecondaryColor = (int)veh.SecondaryColor;
-                obj.PlayerHealth = (int)(100 * ((ped.Health < 0 ? 0 : ped.Health) / (float)ped.MaxHealth));
-                obj.VehicleHealth = veh.EngineHealth;
-                obj.VehicleSeat = Util.GetPedSeat(ped);
-                obj.Name = ped.Handle.ToString();
-                obj.Speed = veh.Speed;
-                obj.RPM = veh.CurrentRPM;
-                obj.Steering = veh.SteeringAngle;
-                obj.RadioStation = (int)Game.RadioStation;
-                obj.Plate = veh.NumberPlate;
+                VehicleData obj = new VehicleData
+                {
+                    Position = veh.Position.ToLVector(),
+                    Quaternion = veh.Rotation.ToLVector(),
+                    Velocity = veh.Velocity.ToLVector(),
+                    PedModelHash = ped.Model.Hash,
+                    VehicleModelHash = veh.Model.Hash,
+                    PrimaryColor = (int)veh.PrimaryColor,
+                    SecondaryColor = (int)veh.SecondaryColor,
+                    PlayerHealth = (int)(100 * ((ped.Health < 0 ? 0 : ped.Health) / (float)ped.MaxHealth)),
+                    VehicleHealth = veh.EngineHealth,
+                    VehicleSeat = Util.GetPedSeat(ped),
+                    Name = ped.Handle.ToString(),
+                    Speed = veh.Speed,
+                    RPM = veh.CurrentRPM,
+                    Steering = veh.SteeringAngle,
+                    RadioStation = (int)Game.RadioStation,
+                    Plate = veh.NumberPlate
+                };
 
                 if (siren)
                     obj.Flag |= (byte)VehicleDataFlags.SirenActive;
@@ -1068,16 +1074,18 @@ namespace LiteClient
                 if (shooting)
                     aimCoord = Util.GetLastWeaponImpact(ped);
 
-                PedData obj = new PedData();
-                obj.AimCoords = aimCoord.ToLVector();
-                obj.Position = ped.Position.ToLVector();
-                obj.Quaternion = ped.Rotation.ToLVector();
-                obj.PedModelHash = ped.Model.Hash;
-                obj.WeaponHash = (int)ped.Weapons.Current.Hash;
-                obj.PlayerHealth = (int)(100 * ((ped.Health < 0 ? 0 : ped.Health) / (float)ped.MaxHealth));
-                obj.Name = ped.Handle.ToString();
+                PedData obj = new PedData
+                {
+                    AimCoords = aimCoord.ToLVector(),
+                    Position = ped.Position.ToLVector(),
+                    Quaternion = ped.Rotation.ToLVector(),
+                    PedModelHash = ped.Model.Hash,
+                    WeaponHash = (int)ped.Weapons.Current.Hash,
+                    PlayerHealth = (int)(100 * ((ped.Health < 0 ? 0 : ped.Health) / (float)ped.MaxHealth)),
+                    Name = ped.Handle.ToString(),
 
-                obj.Flag = 0;
+                    Flag = 0
+                };
 
                 if (aiming)
                     obj.Flag |= (byte)PedDataFlags.IsAiming;
@@ -1837,8 +1845,6 @@ namespace LiteClient
         private DateTime _artificialLagCounter = DateTime.MinValue;
         private SyncPed _debugSyncPed;
         private int _debugInterval = 30;
-        private int _debugFluctuation = 0;
-        private Random _r = new Random();
 
         private void Debug()
         {
@@ -1849,10 +1855,9 @@ namespace LiteClient
                 _debugSyncPed = new SyncPed(player.Model.Hash, player.Position, player.Rotation, false);
             }
 
-            if (DateTime.Now.Subtract(_artificialLagCounter).TotalMilliseconds >= (_debugInterval))
+            if (DateTime.Now.Subtract(_artificialLagCounter).TotalMilliseconds >= _debugInterval)
             {
                 _artificialLagCounter = DateTime.Now;
-                _debugFluctuation = _r.Next(10) - 5;
                 if (player.IsInVehicle())
                 {
                     Vehicle veh = player.CurrentVehicle;
@@ -1887,7 +1892,7 @@ namespace LiteClient
                 else
                 {
                     bool aiming = Game.IsControlPressed(0, GTA.Control.Aim),
-                        shooting = player.IsShooting;
+                        shooting = player.IsShooting && player.Weapons.Current?.AmmoInClip != 0;
 
                     Vector3 aimCoord = new Vector3();
                     if (aiming || shooting)
