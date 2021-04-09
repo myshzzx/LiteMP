@@ -966,6 +966,9 @@ namespace LiteClient
                 if (shooting || (player.IsInMeleeCombat && Game.IsControlJustPressed(0, Control.Attack)))
                     obj.Flag |= (byte)PedDataFlags.IsShooting;
 
+                if (player.IsReloading)
+                    obj.Flag |= (byte)PedDataFlags.IsReloading;
+
                 if (jumping)
                     obj.Flag |= (byte)PedDataFlags.IsJumping;
 
@@ -1081,6 +1084,9 @@ namespace LiteClient
 
                 if (shooting || (ped.IsInMeleeCombat && Game.IsControlJustPressed(0, Control.Attack)))
                     obj.Flag |= (byte)PedDataFlags.IsShooting;
+
+                if (ped.IsReloading)
+                    obj.Flag |= (byte)PedDataFlags.IsReloading;
 
                 if (jumping)
                     obj.Flag |= (byte)PedDataFlags.IsJumping;
@@ -1448,6 +1454,7 @@ namespace LiteClient
                                         Opponents[data.Id].IsAiming = (data.Flag.Value & (short)PedDataFlags.IsAiming) > 0;
                                         Opponents[data.Id].IsJumping = (data.Flag.Value & (short)PedDataFlags.IsJumping) > 0;
                                         Opponents[data.Id].IsShooting = (data.Flag.Value & (short)PedDataFlags.IsShooting) > 0;
+                                        Opponents[data.Id].IsReloading = (data.Flag.Value & (short)PedDataFlags.IsReloading) > 0;
                                         Opponents[data.Id].IsParachuteOpen = (data.Flag.Value & (short)PedDataFlags.IsParachuteOpen) > 0;
                                     }
                                 }
@@ -1527,6 +1534,7 @@ namespace LiteClient
                                         Npcs[data.Name].IsAiming = (data.Flag.Value & (short)PedDataFlags.IsAiming) > 0;
                                         Npcs[data.Name].IsJumping = (data.Flag.Value & (short)PedDataFlags.IsJumping) > 0;
                                         Npcs[data.Name].IsShooting = (data.Flag.Value & (short)PedDataFlags.IsShooting) > 0;
+                                        Npcs[data.Name].IsReloading = (data.Flag.Value & (short)PedDataFlags.IsReloading) > 0;
                                         Npcs[data.Name].IsParachuteOpen = (data.Flag.Value & (short)PedDataFlags.IsParachuteOpen) > 0;
                                     }
                                 }
@@ -1878,13 +1886,12 @@ namespace LiteClient
                 }
                 else
                 {
-                    bool aiming = Game.IsControlPressed(0, GTA.Control.Aim);
-                    bool shooting = player.IsShooting;
+                    bool aiming = Game.IsControlPressed(0, GTA.Control.Aim),
+                        shooting = player.IsShooting;
 
                     Vector3 aimCoord = new Vector3();
                     if (aiming || shooting)
-                        aimCoord = ScreenRelToWorld(GameplayCamera.Position, GameplayCamera.Rotation,
-                            new Vector2(0, 0));
+                        aimCoord = ScreenRelToWorld(GameplayCamera.Position, GameplayCamera.Rotation, new Vector2(0, 0));
 
                     _debugSyncPed.AimCoords = aimCoord;
                     _debugSyncPed.Position = player.Position;
@@ -1894,6 +1901,7 @@ namespace LiteClient
                     _debugSyncPed.PedHealth = (int)(100 * ((player.Health < 0 ? 0 : player.Health) / (float)player.MaxHealth));
                     _debugSyncPed.IsAiming = aiming;
                     _debugSyncPed.IsShooting = shooting || (player.IsInMeleeCombat && Game.IsControlJustPressed(0, Control.Attack));
+                    _debugSyncPed.IsReloading = player.IsReloading;
                     _debugSyncPed.IsJumping = Function.Call<bool>(Hash.IS_PED_JUMPING, player.Handle);
                     _debugSyncPed.IsParachuteOpen = Function.Call<int>(Hash.GET_PED_PARACHUTE_STATE, Game.Player.Character.Handle) == 2;
                     _debugSyncPed.IsInVehicle = false;

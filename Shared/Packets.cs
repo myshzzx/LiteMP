@@ -50,8 +50,9 @@ namespace Shared
     {
         IsAiming = 1 << 0,
         IsShooting = 1 << 1,
-        IsJumping = 1 << 2,
-        IsParachuteOpen = 1 << 3,
+        IsReloading = 1 << 2,
+        IsJumping = 1 << 3,
+        IsParachuteOpen = 1 << 4,
     }
 
     [ProtoContract]

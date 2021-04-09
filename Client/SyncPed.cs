@@ -16,7 +16,7 @@ namespace LiteClient
         public Ped Character;
         public Vector3 Position, _rotation, AimCoords;
         public int ModelHash, CurrentWeapon;
-        public bool IsShooting, _lastShooting, IsAiming, IsJumping, _lastJumping, IsInVehicle, _lastVehicle;
+        public bool IsShooting, _lastShooting, IsReloading, IsAiming, IsJumping, _lastJumping, IsInVehicle, _lastVehicle;
         private bool _lastBurnout;
         public float Latency;
         public bool IsHornPressed, _lastHorn, LightsOn, highbeamsOn;
@@ -470,9 +470,6 @@ namespace LiteClient
                     if (Character.Weapons.Current.Hash != (WeaponHash)CurrentWeapon)
                         Character.Weapons.Select(Character.Weapons.Give((WeaponHash)CurrentWeapon, 9999, true, true));
 
-                    if (!_lastJumping && IsJumping)
-                        Character.Task.Jump();
-
                     if (IsParachuteOpen)
                     {
                         if (_parachuteProp == null)
@@ -505,42 +502,56 @@ namespace LiteClient
                         Function.Call(Hash.SET_PED_SHOOT_RATE, Character.Handle, 100);
                         Function.Call(Hash.SET_PED_INFINITE_AMMO_CLIP, Character.Handle, true);
 
-                        const int threshold = 50;
-                        if (IsAiming && !IsShooting && !Character.IsInRangeOf(Position, 0.5f) && _switch % threshold == 0)
+                        if (IsReloading)
                         {
-                            Function.Call(Hash.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD, Character.Handle, dest.X, dest.Y,
-                                dest.Z, AimCoords.X, AimCoords.Y, AimCoords.Z, 2f, 0, 0x3F000000, 0x40800000, 1, 512, 0,
-                                (uint)FiringPattern.FullAuto);
+                            if (!Character.IsReloading)
+                                Character.Task.ReloadWeapon();
                         }
-                        else if (IsAiming && !IsShooting && Character.IsInRangeOf(Position, 0.5f))
+                        else
                         {
-                            Character.Task.AimAt(AimCoords, 100);
-                        }
-
-                        if (!Character.IsInRangeOf(Position, 0.5f) && ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold * 2) == 0)))
-                        {
-                            Function.Call(Hash.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD, Character.Handle, dest.X, dest.Y,
-                                dest.Z, AimCoords.X, AimCoords.Y, AimCoords.Z, 2f, 1, 0x3F000000, 0x40800000, 1, 0, 0,
-                                (uint)FiringPattern.FullAuto);
-                        }
-                        else if ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold / 2) == 0))
-                        {
-                            Function.Call(Hash.TASK_SHOOT_AT_COORD, Character.Handle, AimCoords.X, AimCoords.Y,
-                                AimCoords.Z, 1500, (uint)FiringPattern.FullAuto);
-                        }
-
-                        if (!IsAiming && !IsShooting && !IsJumping)
-                        {
-                            if (!Character.IsInRangeOf(Position, 0.5f))
+                            const int threshold = 50;
+                            if (IsAiming && !IsShooting && !Character.IsInRangeOf(Position, 0.5f) && _switch % threshold == 0)
                             {
-                                Character.Task.RunTo(Position, true, 500);
+                                Function.Call(Hash.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD, Character.Handle, dest.X, dest.Y,
+                                    dest.Z, AimCoords.X, AimCoords.Y, AimCoords.Z, 2f, 0, 0x3F000000, 0x40800000, 1, 512, 0,
+                                    (uint)FiringPattern.FullAuto);
                             }
-                            if (!Character.IsInRangeOf(Position, 5f))
+                            else if (IsAiming && !IsShooting && Character.IsInRangeOf(Position, 0.5f))
+                            {
+                                Character.Task.AimAt(AimCoords, 100);
+                            }
+
+                            if (!Character.IsInRangeOf(Position, 0.5f) && ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold * 2) == 0)))
+                            {
+                                Function.Call(Hash.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD, Character.Handle, dest.X, dest.Y,
+                                    dest.Z, AimCoords.X, AimCoords.Y, AimCoords.Z, 2f, 1, 0x3F000000, 0x40800000, 1, 0, 0,
+                                    (uint)FiringPattern.FullAuto);
+                            }
+                            else if ((IsShooting && !_lastShooting) || (IsShooting && _lastShooting && _switch % (threshold / 2) == 0))
+                            {
+                                Function.Call(Hash.TASK_SHOOT_AT_COORD, Character.Handle, AimCoords.X, AimCoords.Y, AimCoords.Z, 1500, (uint)FiringPattern.FullAuto);
+                            }
+                        }
+
+                        // We have to revise that at some point
+                        if (IsJumping)
+                        {
+                            if (!_lastJumping)
+                                Character.Task.Jump();
+                        }
+                        else
+                        {
+                            if (((IsReloading || IsAiming || IsShooting) && Character.Position != Position) || !Character.IsInRangeOf(Position, 5f))
                             {
                                 Character.Position = dest - new Vector3(0, 0, 1f);
                                 Character.Quaternion = _rotation.ToQuaternion();
                             }
+                            else if (!Character.IsInRangeOf(Position, 0.5f))
+                            {
+                                Character.Task.RunTo(Position, true, 500);
+                            }
                         }
+                        //
                     }
                     _lastJumping = IsJumping;
                     _lastShooting = IsShooting;
