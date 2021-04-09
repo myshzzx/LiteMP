@@ -55,14 +55,10 @@ namespace Shared
     }
 
     [ProtoContract]
-    public class LocalPlayerArgument : NativeArgument
-    {
-    }
+    public class LocalPlayerArgument : NativeArgument {}
 
     [ProtoContract]
-    public class LocalGamePlayerArgument : NativeArgument
-    {
-    }
+    public class LocalGamePlayerArgument : NativeArgument {}
 
     [ProtoContract]
     public class OpponentPedHandleArgument : NativeArgument
@@ -110,7 +106,6 @@ namespace Shared
         [ProtoMember(1)]
         public bool Data { get; set; }
     }
-
 
     [ProtoContract]
     public class Vector3Argument : NativeArgument

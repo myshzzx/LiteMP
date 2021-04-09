@@ -25,7 +25,7 @@ namespace LiteServer
         public int Health { get; internal set; }
         public float VehicleHealth { get; internal set; }
         public bool IsInVehicle { get; internal set; }
-        public bool afk { get; set; }
+        public bool Afk { get; set; }
 
         public DateTime LastUpdate { get; internal set; }
 
@@ -79,7 +79,6 @@ namespace LiteServer
         CHAR_STRETCH, // Stretch's Face
         CHAR_WADE, // Wade's Face
         CHAR_MARTIN, // Martin Madrazo's Face
-
     }
 
     public class GameServer
@@ -160,8 +159,10 @@ namespace LiteServer
                     }
 
                     _gamemode = Activator.CreateInstance(validTypes.ToArray()[0]) as ServerScript;
-                    if (_gamemode == null) Log.LogToConsole(4, "Server", "Could not create gamemode: it is null.");
-                    else _gamemode.Start();
+                    if (_gamemode == null)
+                        Log.LogToConsole(4, "Server", "Could not create gamemode: it is null.");
+                    else
+                        _gamemode.Start();
                 }
                 catch (Exception e)
                 {
@@ -228,17 +229,10 @@ namespace LiteServer
 
         private bool isIPLocal(string ipaddress)
         {
-            String[] straryIPAddress = ipaddress.ToString().Split(new String[] { "." }, StringSplitOptions.RemoveEmptyEntries);
+            string[] straryIPAddress = ipaddress.ToString().Split(new String[] { "." }, StringSplitOptions.RemoveEmptyEntries);
             int[] iaryIPAddress = new int[] { int.Parse(straryIPAddress[0]), int.Parse(straryIPAddress[1]), int.Parse(straryIPAddress[2]), int.Parse(straryIPAddress[3]) };
-            if (iaryIPAddress[0] == 10 || (iaryIPAddress[0] == 192 && iaryIPAddress[1] == 168) || (iaryIPAddress[0] == 172 && (iaryIPAddress[1] >= 16 && iaryIPAddress[1] <= 31)))
-            {
-                return true;
-            }
-            else
-            {
-                // IP Address is "probably" public. This doesn't catch some VPN ranges like OpenVPN and Hamachi.
-                return false;
-            }
+
+            return (iaryIPAddress[0] == 10 || (iaryIPAddress[0] == 192 && iaryIPAddress[1] == 168) || (iaryIPAddress[0] == 172 && iaryIPAddress[1] >= 16 && iaryIPAddress[1] <= 31));
         }
 
         private IEnumerable<ServerScript> InstantiateScripts(Assembly targetAssembly)
@@ -254,7 +248,7 @@ namespace LiteServer
             }
             foreach (var type in validTypes)
             {
-                var obj = Activator.CreateInstance(type) as ServerScript;
+                ServerScript obj = Activator.CreateInstance(type) as ServerScript;
                 if (obj != null)
                     yield return obj;
             }
@@ -295,11 +289,11 @@ namespace LiteServer
                     switch (msg.MessageType)
                     {
                         case NetIncomingMessageType.UnconnectedData:
-                            var isPing = msg.ReadString();
+                            string isPing = msg.ReadString();
                             if (isPing == "ping")
                             {
                                 Log.LogToConsole(0, "Server", "INFO: ping received from " + msg.SenderEndPoint.Address.ToString());
-                                var pong = Server.CreateMessage();
+                                NetOutgoingMessage pong = Server.CreateMessage();
                                 pong.Write("pong");
                                 Server.SendMessage(pong, client.NetConnection, NetDeliveryMethod.ReliableOrdered);
                             }
@@ -308,7 +302,7 @@ namespace LiteServer
                                 int playersonline = 0;
                                 lock (Clients) playersonline = Clients.Count;
                                 Log.LogToConsole(0, "Server", "INFO: query received from " + msg.SenderEndPoint.Address.ToString());
-                                var pong = Server.CreateMessage();
+                                NetOutgoingMessage pong = Server.CreateMessage();
                                 pong.Write(Name + "%" + PasswordProtected + "%" + playersonline + "%" + MaxPlayers + "%" + GamemodeName);
                                 Server.SendMessage(pong, client.NetConnection, NetDeliveryMethod.ReliableOrdered);
                             }
@@ -331,8 +325,8 @@ namespace LiteServer
                         case NetIncomingMessageType.ConnectionApproval:
                             var type = msg.ReadInt32();
                             var leng = msg.ReadInt32();
-                            var connReq = DeserializeBinary<ConnectionRequest>(msg.ReadBytes(leng)) as ConnectionRequest;
-                            if (connReq == null)
+
+                            if (!(DeserializeBinary<ConnectionRequest>(msg.ReadBytes(leng)) is ConnectionRequest connReq))
                             {
                                 client.NetConnection.Deny("Connection Object is null");
                                 Server.Recycle(msg);
@@ -394,27 +388,36 @@ namespace LiteServer
                                 channelHail.Write(GetChannelIdForConnection(client));
                                 client.NetConnection.Approve(channelHail);
 
-                                if (_gamemode != null) _gamemode.OnIncomingConnection(client);
-                                if (_filterscripts != null) _filterscripts.ForEach(fs => fs.OnIncomingConnection(client));
+                                if (_gamemode != null)
+                                    _gamemode.OnIncomingConnection(client);
+
+                                if (_filterscripts != null)
+                                    _filterscripts.ForEach(fs => fs.OnIncomingConnection(client));
 
                                 Log.LogToConsole(0, "New incoming connection", client.Name + " (" + client.DisplayName + ")");
                             }
                             else
                             {
                                 client.NetConnection.Deny("No available player slots.");
-                                if (_gamemode != null) _gamemode.OnConnectionRefused(client, "Server is full");
-                                if (_filterscripts != null) _filterscripts.ForEach(fs => fs.OnConnectionRefused(client, "Server is full"));
+                                if (_gamemode != null)
+                                    _gamemode.OnConnectionRefused(client, "Server is full");
+
+                                if (_filterscripts != null)
+                                    _filterscripts.ForEach(fs => fs.OnConnectionRefused(client, "Server is full"));
                             }
                             break;
                         case NetIncomingMessageType.StatusChanged:
-                            var newStatus = (NetConnectionStatus)msg.ReadByte();
+                            NetConnectionStatus newStatus = (NetConnectionStatus)msg.ReadByte();
 
                             if (newStatus == NetConnectionStatus.Connected)
                             {
                                 bool sendMsg = true;
 
-                                if (_gamemode != null) sendMsg = sendMsg && _gamemode.OnPlayerConnect(client);
-                                if (_filterscripts != null) _filterscripts.ForEach(fs => sendMsg = sendMsg && fs.OnPlayerConnect(client));
+                                if (_gamemode != null)
+                                    sendMsg = sendMsg && _gamemode.OnPlayerConnect(client);
+
+                                if (_filterscripts != null)
+                                    _filterscripts.ForEach(fs => sendMsg = sendMsg && fs.OnPlayerConnect(client));
 
                                 if (sendMsg)
                                     SendNotificationToAll("Player ~h~" + client.DisplayName + "~h~ has connected.");
@@ -427,15 +430,18 @@ namespace LiteServer
                                 {
                                     if (Clients.Contains(client))
                                     {
-                                        var sendMsg = true;
+                                        bool sendMsg = true;
 
-                                        if (_gamemode != null) sendMsg = sendMsg && _gamemode.OnPlayerDisconnect(client);
-                                        if (_filterscripts != null) _filterscripts.ForEach(fs => sendMsg = sendMsg && fs.OnPlayerDisconnect(client));
+                                        if (_gamemode != null)
+                                            sendMsg = sendMsg && _gamemode.OnPlayerDisconnect(client);
+
+                                        if (_filterscripts != null)
+                                            _filterscripts.ForEach(fs => sendMsg = sendMsg && fs.OnPlayerDisconnect(client));
 
                                         if (sendMsg)
                                             SendNotificationToAll("Player ~h~" + client.DisplayName + "~h~ has disconnected.");
 
-                                        var dcObj = new PlayerDisconnect()
+                                        PlayerDisconnect dcObj = new PlayerDisconnect()
                                         {
                                             Id = client.NetConnection.RemoteUniqueIdentifier,
                                         };
@@ -451,16 +457,18 @@ namespace LiteServer
                             break;
                         case NetIncomingMessageType.DiscoveryRequest:
                             NetOutgoingMessage response = Server.CreateMessage();
-                            var obj = new DiscoveryResponse();
-                            obj.ServerName = Name;
-                            obj.MaxPlayers = MaxPlayers;
-                            obj.PasswordProtected = PasswordProtected;
-                            obj.Gamemode = GamemodeName;
+                            DiscoveryResponse obj = new DiscoveryResponse
+                            {
+                                ServerName = Name,
+                                MaxPlayers = MaxPlayers,
+                                PasswordProtected = PasswordProtected,
+                                Gamemode = GamemodeName
+                            };
                             lock (Clients) obj.PlayerCount = (short)Clients.Count(c => DateTime.Now.Subtract(c.LastUpdate).TotalMilliseconds < 60000);
                             obj.Port = Port;
 
                             obj.LAN = isIPLocal(msg.SenderEndPoint.Address.ToString());
-                            var bin = SerializeBinary(obj);
+                            byte[] bin = SerializeBinary(obj);
 
                             response.Write((int)PacketType.DiscoveryResponse);
                             response.Write(bin.Length);
@@ -477,11 +485,10 @@ namespace LiteServer
                                     {
                                         try
                                         {
-                                            var len = msg.ReadInt32();
-                                            var data = DeserializeBinary<ChatData>(msg.ReadBytes(len)) as ChatData;
-                                            if (data != null)
+                                            int len = msg.ReadInt32();
+                                            if (DeserializeBinary<ChatData>(msg.ReadBytes(len)) is ChatData data)
                                             {
-                                                var pass = true;
+                                                bool pass = true;
                                                 if (_gamemode != null) pass = _gamemode.OnChatMessage(client, data.Message);
 
                                                 if (_filterscripts != null) _filterscripts.ForEach(fs => pass = pass && fs.OnChatMessage(client, data.Message));
@@ -503,11 +510,8 @@ namespace LiteServer
                                     {
                                         try
                                         {
-                                            var len = msg.ReadInt32();
-                                            var data =
-                                                DeserializeBinary<VehicleData>(msg.ReadBytes(len)) as
-                                                    VehicleData;
-                                            if (data != null)
+                                            int len = msg.ReadInt32();
+                                            if (DeserializeBinary<VehicleData>(msg.ReadBytes(len)) is VehicleData data)
                                             {
                                                 data.Id = client.NetConnection.RemoteUniqueIdentifier;
                                                 data.Name = client.DisplayName;
@@ -530,9 +534,8 @@ namespace LiteServer
                                     {
                                         try
                                         {
-                                            var len = msg.ReadInt32();
-                                            var data = DeserializeBinary<PedData>(msg.ReadBytes(len)) as PedData;
-                                            if (data != null)
+                                            int len = msg.ReadInt32();
+                                            if (DeserializeBinary<PedData>(msg.ReadBytes(len)) is PedData data)
                                             {
                                                 data.Id = client.NetConnection.RemoteUniqueIdentifier;
                                                 data.Name = client.DisplayName;
@@ -554,11 +557,8 @@ namespace LiteServer
                                     {
                                         try
                                         {
-                                            var len = msg.ReadInt32();
-                                            var data =
-                                                DeserializeBinary<VehicleData>(msg.ReadBytes(len)) as
-                                                    VehicleData;
-                                            if (data != null)
+                                            int len = msg.ReadInt32();
+                                            if (DeserializeBinary<VehicleData>(msg.ReadBytes(len)) is VehicleData data)
                                             {
                                                 data.Id = client.NetConnection.RemoteUniqueIdentifier;
                                                 SendToAll(data, PacketType.NpcVehPositionData, false, client);
@@ -572,10 +572,8 @@ namespace LiteServer
                                     {
                                         try
                                         {
-                                            var len = msg.ReadInt32();
-                                            var data =
-                                                DeserializeBinary<PedData>(msg.ReadBytes(len)) as PedData;
-                                            if (data != null)
+                                            int len = msg.ReadInt32();
+                                            if (DeserializeBinary<PedData>(msg.ReadBytes(len)) is PedData data)
                                             {
                                                 data.Id = msg.SenderConnection.RemoteUniqueIdentifier;
                                                 SendToAll(data, PacketType.NpcPedPositionData, false, client);
@@ -587,7 +585,7 @@ namespace LiteServer
                                     break;
                                 case PacketType.WorldSharingStop:
                                     {
-                                        var dcObj = new PlayerDisconnect()
+                                        PlayerDisconnect dcObj = new PlayerDisconnect()
                                         {
                                             Id = client.NetConnection.RemoteUniqueIdentifier,
                                         };
@@ -596,33 +594,31 @@ namespace LiteServer
                                     break;
                                 case PacketType.NativeResponse:
                                     {
-                                        var len = msg.ReadInt32();
-                                        var data = DeserializeBinary<NativeResponse>(msg.ReadBytes(len)) as NativeResponse;
-                                        if (data == null || !_callbacks.ContainsKey(data.Id)) continue;
+                                        int len = msg.ReadInt32();
+                                        if (!(DeserializeBinary<NativeResponse>(msg.ReadBytes(len)) is NativeResponse data) || !_callbacks.ContainsKey(data.Id)) continue;
                                         object resp = null;
-                                        if (data.Response is IntArgument)
+                                        if (data.Response is IntArgument argument)
                                         {
-                                            resp = ((IntArgument)data.Response).Data;
+                                            resp = argument.Data;
                                         }
-                                        else if (data.Response is UIntArgument)
+                                        else if (data.Response is UIntArgument argument1)
                                         {
-                                            resp = ((UIntArgument)data.Response).Data;
+                                            resp = argument1.Data;
                                         }
-                                        else if (data.Response is StringArgument)
+                                        else if (data.Response is StringArgument argument2)
                                         {
-                                            resp = ((StringArgument)data.Response).Data;
+                                            resp = argument2.Data;
                                         }
-                                        else if (data.Response is FloatArgument)
+                                        else if (data.Response is FloatArgument argument3)
                                         {
-                                            resp = ((FloatArgument)data.Response).Data;
+                                            resp = argument3.Data;
                                         }
-                                        else if (data.Response is BooleanArgument)
+                                        else if (data.Response is BooleanArgument argument4)
                                         {
-                                            resp = ((BooleanArgument)data.Response).Data;
+                                            resp = argument4.Data;
                                         }
-                                        else if (data.Response is Vector3Argument)
+                                        else if (data.Response is Vector3Argument tmp)
                                         {
-                                            var tmp = (Vector3Argument)data.Response;
                                             resp = new LVector3()
                                             {
                                                 X = tmp.X,
@@ -637,8 +633,11 @@ namespace LiteServer
                                     break;
                                 case PacketType.PlayerKilled:
                                     {
-                                        if (_gamemode != null) _gamemode.OnPlayerKilled(client);
-                                        if (_filterscripts != null) _filterscripts.ForEach(fs => fs.OnPlayerKilled(client));
+                                        if (_gamemode != null)
+                                            _gamemode.OnPlayerKilled(client);
+
+                                        if (_filterscripts != null)
+                                            _filterscripts.ForEach(fs => fs.OnPlayerKilled(client));
                                     }
                                     break;
                             }
@@ -649,13 +648,16 @@ namespace LiteServer
                     }
                     Server.Recycle(msg);
                 }
-            if (_gamemode != null) _gamemode.OnTick();
-            if (_filterscripts != null) _filterscripts.ForEach(fs => fs.OnTick());
+            if (_gamemode != null)
+                _gamemode.OnTick();
+
+            if (_filterscripts != null)
+                _filterscripts.ForEach(fs => fs.OnTick());
         }
 
         public void SendToAll(object newData, PacketType packetType, bool important)
         {
-            var data = SerializeBinary(newData);
+            byte[] data = SerializeBinary(newData);
             NetOutgoingMessage msg = Server.CreateMessage();
             msg.Write((int)packetType);
             msg.Write(data.Length);
@@ -665,7 +667,7 @@ namespace LiteServer
 
         public void SendToAll(object newData, PacketType packetType, bool important, Client exclude)
         {
-            var data = SerializeBinary(newData);
+            byte[] data = SerializeBinary(newData);
             NetOutgoingMessage msg = Server.CreateMessage();
             msg.Write((int)packetType);
             msg.Write(data.Length);
@@ -675,7 +677,7 @@ namespace LiteServer
 
         public object DeserializeBinary<T>(byte[] data)
         {
-            using (var stream = new MemoryStream(data))
+            using (MemoryStream stream = new MemoryStream(data))
             {
                 try
                 {
@@ -691,7 +693,7 @@ namespace LiteServer
 
         public byte[] SerializeBinary(object data)
         {
-            using (var stream = new MemoryStream())
+            using (MemoryStream stream = new MemoryStream())
             {
                 Serializer.Serialize(stream, data);
                 return stream.ToArray();
@@ -708,29 +710,28 @@ namespace LiteServer
             var list = new List<NativeArgument>();
             foreach (var o in args)
             {
-                if (o is int)
+                if (o is int @int)
                 {
-                    list.Add(new IntArgument() { Data = ((int)o) });
+                    list.Add(new IntArgument() { Data = @int });
                 }
-                else if (o is uint)
+                else if (o is uint int1)
                 {
-                    list.Add(new UIntArgument() { Data = ((uint)o) });
+                    list.Add(new UIntArgument() { Data = int1 });
                 }
-                else if (o is string)
+                else if (o is string @string)
                 {
-                    list.Add(new StringArgument() { Data = ((string)o) });
+                    list.Add(new StringArgument() { Data = @string });
                 }
-                else if (o is float)
+                else if (o is float single)
                 {
-                    list.Add(new FloatArgument() { Data = ((float)o) });
+                    list.Add(new FloatArgument() { Data = single });
                 }
-                else if (o is bool)
+                else if (o is bool boolean)
                 {
-                    list.Add(new BooleanArgument() { Data = ((bool)o) });
+                    list.Add(new BooleanArgument() { Data = boolean });
                 }
-                else if (o is LVector3)
+                else if (o is LVector3 tmp)
                 {
-                    var tmp = (LVector3)o;
                     list.Add(new Vector3Argument()
                     {
                         X = tmp.X,
@@ -738,17 +739,17 @@ namespace LiteServer
                         Z = tmp.Z,
                     });
                 }
-                else if (o is LocalPlayerArgument)
+                else if (o is LocalPlayerArgument argument)
                 {
-                    list.Add((LocalPlayerArgument)o);
+                    list.Add(argument);
                 }
-                else if (o is OpponentPedHandleArgument)
+                else if (o is OpponentPedHandleArgument argument1)
                 {
-                    list.Add((OpponentPedHandleArgument)o);
+                    list.Add(argument1);
                 }
-                else if (o is LocalGamePlayerArgument)
+                else if (o is LocalGamePlayerArgument argument2)
                 {
-                    list.Add((LocalGamePlayerArgument)o);
+                    list.Add(argument2);
                 }
             }
 
@@ -757,13 +758,15 @@ namespace LiteServer
 
         public void SendNativeCallToPlayer(Client player, ulong hash, params object[] arguments)
         {
-            var obj = new NativeData();
-            obj.Hash = hash;
-            obj.Arguments = ParseNativeArguments(arguments);
+            NativeData obj = new NativeData
+            {
+                Hash = hash,
+                Arguments = ParseNativeArguments(arguments)
+            };
 
-            var bin = SerializeBinary(obj);
+            byte[] bin = SerializeBinary(obj);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
 
             msg.Write((int)PacketType.NativeCall);
             msg.Write(bin.Length);
@@ -774,15 +777,17 @@ namespace LiteServer
 
         public void SendNativeCallToAllPlayers(ulong hash, params object[] arguments)
         {
-            var obj = new NativeData();
-            obj.Hash = hash;
-            obj.Arguments = ParseNativeArguments(arguments);
-            obj.ReturnType = null;
-            obj.Id = null;
+            NativeData obj = new NativeData
+            {
+                Hash = hash,
+                Arguments = ParseNativeArguments(arguments),
+                ReturnType = null,
+                Id = null
+            };
 
-            var bin = SerializeBinary(obj);
+            byte[] bin = SerializeBinary(obj);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
 
             msg.Write((int)PacketType.NativeCall);
             msg.Write(bin.Length);
@@ -793,18 +798,22 @@ namespace LiteServer
 
         public void SetNativeCallOnTickForPlayer(Client player, string identifier, ulong hash, params object[] arguments)
         {
-            var obj = new NativeData();
-            obj.Hash = hash;
+            NativeData obj = new NativeData
+            {
+                Hash = hash,
 
-            obj.Arguments = ParseNativeArguments(arguments);
+                Arguments = ParseNativeArguments(arguments)
+            };
 
-            var wrapper = new NativeTickCall();
-            wrapper.Identifier = identifier;
-            wrapper.Native = obj;
+            NativeTickCall wrapper = new NativeTickCall
+            {
+                Identifier = identifier,
+                Native = obj
+            };
 
-            var bin = SerializeBinary(wrapper);
+            byte[] bin = SerializeBinary(wrapper);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
 
             msg.Write((int)PacketType.NativeTick);
             msg.Write(bin.Length);
@@ -815,18 +824,22 @@ namespace LiteServer
 
         public void SetNativeCallOnTickForAllPlayers(string identifier, ulong hash, params object[] arguments)
         {
-            var obj = new NativeData();
-            obj.Hash = hash;
+            NativeData obj = new NativeData
+            {
+                Hash = hash,
 
-            obj.Arguments = ParseNativeArguments(arguments);
+                Arguments = ParseNativeArguments(arguments)
+            };
 
-            var wrapper = new NativeTickCall();
-            wrapper.Identifier = identifier;
-            wrapper.Native = obj;
+            NativeTickCall wrapper = new NativeTickCall
+            {
+                Identifier = identifier,
+                Native = obj
+            };
 
-            var bin = SerializeBinary(wrapper);
+            byte[] bin = SerializeBinary(wrapper);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
 
             msg.Write((int)PacketType.NativeTick);
             msg.Write(bin.Length);
@@ -837,12 +850,14 @@ namespace LiteServer
 
         public void RecallNativeCallOnTickForPlayer(Client player, string identifier)
         {
-            var wrapper = new NativeTickCall();
-            wrapper.Identifier = identifier;
+            NativeTickCall wrapper = new NativeTickCall
+            {
+                Identifier = identifier
+            };
 
-            var bin = SerializeBinary(wrapper);
+            byte[] bin = SerializeBinary(wrapper);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
             msg.Write((int)PacketType.NativeTickRecall);
             msg.Write(bin.Length);
             msg.Write(bin);
@@ -852,12 +867,12 @@ namespace LiteServer
 
         public void RecallNativeCallOnTickForAllPlayers(string identifier)
         {
-            var wrapper = new NativeTickCall();
+            NativeTickCall wrapper = new NativeTickCall();
             wrapper.Identifier = identifier;
 
-            var bin = SerializeBinary(wrapper);
+            byte[] bin = SerializeBinary(wrapper);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
             msg.Write((int)PacketType.NativeTickRecall);
             msg.Write(bin.Length);
             msg.Write(bin);
@@ -867,15 +882,17 @@ namespace LiteServer
 
         public void SetNativeCallOnDisconnectForPlayer(Client player, string identifier, ulong hash, params object[] arguments)
         {
-            var obj = new NativeData();
-            obj.Hash = hash;
-            obj.Id = identifier;
-            obj.Arguments = ParseNativeArguments(arguments);
+            var obj = new NativeData
+            {
+                Hash = hash,
+                Id = identifier,
+                Arguments = ParseNativeArguments(arguments)
+            };
 
 
-            var bin = SerializeBinary(obj);
+            byte[] bin = SerializeBinary(obj);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
 
             msg.Write((int)PacketType.NativeOnDisconnect);
             msg.Write(bin.Length);
@@ -886,14 +903,16 @@ namespace LiteServer
 
         public void SetNativeCallOnDisconnectForAllPlayers(string identifier, ulong hash, params object[] arguments)
         {
-            var obj = new NativeData();
-            obj.Hash = hash;
-            obj.Id = identifier;
-            obj.Arguments = ParseNativeArguments(arguments);
+            var obj = new NativeData
+            {
+                Hash = hash,
+                Id = identifier,
+                Arguments = ParseNativeArguments(arguments)
+            };
 
-            var bin = SerializeBinary(obj);
+            byte[] bin = SerializeBinary(obj);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
 
             msg.Write((int)PacketType.NativeOnDisconnect);
             msg.Write(bin.Length);
@@ -904,12 +923,14 @@ namespace LiteServer
 
         public void RecallNativeCallOnDisconnectForPlayer(Client player, string identifier)
         {
-            var obj = new NativeData();
-            obj.Id = identifier;
+            var obj = new NativeData
+            {
+                Id = identifier
+            };
 
-            var bin = SerializeBinary(obj);
+            byte[] bin = SerializeBinary(obj);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
             msg.Write((int)PacketType.NativeOnDisconnectRecall);
             msg.Write(bin.Length);
             msg.Write(bin);
@@ -919,12 +940,14 @@ namespace LiteServer
 
         public void RecallNativeCallOnDisconnectForAllPlayers(string identifier)
         {
-            var obj = new NativeData();
-            obj.Id = identifier;
+            var obj = new NativeData
+            {
+                Id = identifier
+            };
 
-            var bin = SerializeBinary(obj);
+            byte[] bin = SerializeBinary(obj);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
             msg.Write((int)PacketType.NativeOnDisconnectRecall);
             msg.Write(bin.Length);
             msg.Write(bin);
@@ -936,19 +959,19 @@ namespace LiteServer
         public void GetNativeCallFromPlayer(Client player, string salt, ulong hash, NativeArgument returnType, Action<object> callback,
             params object[] arguments)
         {
-            var obj = new NativeData();
-            obj.Hash = hash;
-            obj.ReturnType = returnType;
-            salt = Environment.TickCount.ToString() +
-                   salt +
-                   player.NetConnection.RemoteUniqueIdentifier.ToString() +
-                   DateTime.Now.Subtract(new DateTime(1970, 1, 1, 0, 0, 0)).TotalMilliseconds.ToString();
+            var obj = new NativeData
+            {
+                Hash = hash,
+                ReturnType = returnType
+            };
+
+            salt = Environment.TickCount.ToString() + salt + player.NetConnection.RemoteUniqueIdentifier.ToString() + DateTime.Now.Subtract(new DateTime(1970, 1, 1, 0, 0, 0)).TotalMilliseconds.ToString();
             obj.Id = salt;
             obj.Arguments = ParseNativeArguments(arguments);
 
-            var bin = SerializeBinary(obj);
+            byte[] bin = SerializeBinary(obj);
 
-            var msg = Server.CreateMessage();
+            NetOutgoingMessage msg = Server.CreateMessage();
 
             msg.Write((int)PacketType.NativeCall);
             msg.Write(bin.Length);
@@ -1015,15 +1038,12 @@ namespace LiteServer
 
         public void GetPlayerPosition(Client player, Action<object> callback, string salt = "salt")
         {
-            GetNativeCallFromPlayer(player,
-                salt,
-                0x3FEF770D40960D5A, new Vector3Argument(), callback, new LocalPlayerArgument(), 0);
+            GetNativeCallFromPlayer(player, salt, 0x3FEF770D40960D5A, new Vector3Argument(), callback, new LocalPlayerArgument(), 0);
         }
 
         public void HasPlayerControlBeenPressed(Client player, int controlId, Action<object> callback, string salt = "salt")
         {
-            GetNativeCallFromPlayer(player, salt,
-                0x580417101DDB492F, new BooleanArgument(), callback, 0, controlId);
+            GetNativeCallFromPlayer(player, salt, 0x580417101DDB492F, new BooleanArgument(), callback, 0, controlId);
         }
 
         public void SetPlayerHealth(Client player, int health)

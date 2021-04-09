@@ -6,10 +6,7 @@ namespace LiteServer
     {
         public virtual string Name { get; set; }
 
-        public virtual void Start()
-        {
-        }
-
+        public virtual void Start() {}
 
         public virtual bool OnChatMessage(Client sender, string message)
         {
@@ -21,9 +18,7 @@ namespace LiteServer
             return true;
         }
 
-        public virtual void OnIncomingConnection(Client player)
-        {
-        }
+        public virtual void OnIncomingConnection(Client player) {}
 
         public virtual bool OnPlayerDisconnect(Client player)
         {
@@ -31,16 +26,10 @@ namespace LiteServer
         }
 
 
-        public virtual void OnConnectionRefused(Client player, string reason)
-        {
-        }
+        public virtual void OnConnectionRefused(Client player, string reason) {}
 
-        public virtual void OnPlayerKilled(Client player)
-        {
-        }
+        public virtual void OnPlayerKilled(Client player) {}
 
-        public virtual void OnTick()
-        {
-        }
+        public virtual void OnTick() {}
     }
 }
